@@ -1,0 +1,18 @@
+{
+	"Resources" : {
+		"MyPSDBucket" : {
+			"Type" : "AWS::S3::Bucket",
+			"Properties" : {
+				"BucketName" : "mypsdbucket26",
+				"AccessControl" : "PublicRead",
+				"VersioningConfiguration" : {
+						"Status" : "Enabled"
+					},
+				"WebsiteConfiguration" : {
+					"IndexDocument" : "index.html",
+					"ErrorDocument" : "error.html"
+				}
+			}
+		}
+	}
+}
