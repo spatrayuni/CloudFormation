@@ -1,0 +1,53 @@
+{
+	"Resources" : {
+		"ELBSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+  			"Properties" : {
+     			"GroupDescription" : "For EBL SecurityGroup",
+     			"VpcId" : "vpc-583f7f3f",
+     			"SecurityGroupIngress" : [ {
+					"CidrIp" : "0.0.0.0/0",
+					"FromPort" : "80",
+					"IpProtocol" : "tcp",
+					"ToPort" : "80"
+				}]
+  			}	
+		},
+
+		"ELBSample" : {
+			"Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+			"Properties" : {
+				"LoadBalancerName" : "ELBSample1",
+				"CrossZone" : "true",
+				"HealthCheck" : {
+   					"HealthyThreshold" : "5",
+   					"Interval" : "30",
+   					"Target" : "HTTP:80/index.html",
+   					"Timeout" : "20",
+   					"UnhealthyThreshold" : "2"
+				},
+				"Listeners" : [{ 
+  					"InstancePort" : "80",
+  					"InstanceProtocol" : "HTTP",
+  					"LoadBalancerPort" : "80",
+  					"Protocol" : "HTTP"
+				}],
+				"SecurityGroups" : [{ "Ref" : "ELBSG"}],
+				"Instances" : [ "i-059c29a1341a656b7"],
+				"Scheme" : "internet-facing",
+				"Subnets" : ["subnet-5e43f317", "subnet-8f6af4e8"]
+			}
+		},
+
+		"EC2SGUpdate" : {
+			"Type" : "AWS::EC2::SecurityGroupIngress",
+			"Properties" : {
+				"SourceSecurityGroupId" : {"Ref" : "ELBSG"},
+				"FromPort" : "80",
+				"IpProtocol" : "tcp",
+				"ToPort" : "80",
+				"GroupId" : "sg-d68e9cae"
+			}
+		}
+	}
+}

@@ -1,0 +1,25 @@
+{
+	"Resources" : {
+		"SanthoshBucket" : {
+			"Type" : "AWS::S3::Bucket",
+			"Properties" : {
+				"BucketName" : "cfbucketpsd1",
+				"AccessControl" : "Private",
+				"VersioningConfiguration" : {
+					"Status" : "Enabled"
+				},
+				"LoggingConfiguration" : {
+  					"DestinationBucketName" : { "Ref" : "cfbucketpsd1"},
+  					"LogFilePrefix" : "CFSample"
+				},
+				"Tags" : [ { "Key" : "Name", "Value" : "CF"}]
+			}
+		},
+		"cfbucketpsd1" : {
+			"Type" : "AWS::S3::Bucket",
+			"Properties" : {
+					"AccessControl" : "LogDeliveryWrite"
+				}
+		}
+	}
+}

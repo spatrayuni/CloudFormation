@@ -1,0 +1,18 @@
+{
+	"Resources" : {
+		"MyPSDBucket" : {
+			"Type" : "AWS::S3::Bucket",
+			"Properties" : {
+				"AccessControl" : "PublicRead",
+				"BucketName" : "mypsdbucket26",
+				"VersioningConfiguration" : {
+					"Status" : "Enabled"
+				},
+				"LoggingConfiguration" : {
+					"DestinationBucketName" : "mypsdbucket26",
+					"LogFilePrefix" : "Enabled"
+				}
+			}
+		}
+	}
+}

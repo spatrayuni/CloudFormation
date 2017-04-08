@@ -1,0 +1,36 @@
+{
+	"Parameters" : {
+		"Subnet" : {
+      		"Type" : "String",
+      		"Description" : "Subnet Id."
+    	}
+	},
+
+	"Resources" : {
+		"PSDVPC1VM1" : {
+			"Type" : "AWS::EC2::Instance",
+			"Properties" : {
+				"ImageId" : "ami-0b7af46b",
+				"SecurityGroups"  : [{ "Ref" : "psdwebvm1sg"},  ],
+				"SubnetId" : {"Ref" : "Subnet"},
+				"InstanceType" : "t2.small",
+				"KeyName" : "IntuitKey_Personal.pem"
+			}
+		},
+
+		"psdwebvm1sg" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Enable SSH & ICMP",
+				"SecurityGroupIngress" : [ {
+					"IpProtocol" : "tcp",
+					"FromPort" : "22",
+					"ToPort" : "22",
+					"CidrIp" : "103.15.250.0/32"
+				} ],
+				"VpcId" : "vpc-583f7f3f"
+			}
+		}
+	}
+}
+

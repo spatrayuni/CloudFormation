@@ -1,0 +1,139 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "Creates a Auto Scaling LaunchConfig, Group & Policy with existing VPC",
+
+	"Parameters" : {
+		"AMIId" : {
+			"Description" : "Desired AMI ID",
+			"Type" : "String",
+			"Default" : "ami-0b7af46b"
+		},
+		"InstanceType" : {
+			"Description" : "Desired Instance Type",
+			"Type" : "String",
+			"Default" : "t2.small"
+		},
+		"Key" : {
+			"Description" : "Key Name of your choice",
+			"Type" : "AWS::EC2::KeyPair::KeyName",
+			"Default" : "IntuitKey_Personal.pem"
+		},
+		"BastionSG" : {
+			"Description" : "Bastion SG group",
+			"Type" : "AWS::EC2::SecurityGroup::Id",
+			"Default" : "sg-d68e9cae"
+		},
+		"VpcId" : {
+			"Description" : "Desired VPC ID",
+			"Type" : "AWS::EC2::VPC::Id",
+			"Default" : "vpc-583f7f3f"
+		}
+	},
+
+	"Resources" : {
+		"AutoScalingLaunchConfig" : {
+			"Type" : "AWS::AutoScaling::LaunchConfiguration",
+			"Properties" : {
+				"ImageId" : { "Ref" : "AMIId"},
+				"InstanceType" : { "Ref" : "InstanceType"},
+				"SecurityGroups" : [{"Ref" : "WebSG"}],
+				"KeyName" : {"Ref" : "Key"},
+				"AssociatePublicIpAddress" : "true"
+			}
+		},
+
+		"WebSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "SecurityGroup for Web VMs",
+				"VpcId" : {"Ref" : "VpcId"},
+				"SecurityGroupIngress" : [ 
+					{
+						"FromPort" : "80",
+						"ToPort" : "80",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.10/32"
+					},
+					{
+						"FromPort" : "80",
+						"ToPort" : "80",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.11/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.10/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.11/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.10/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.11/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"SourceSecurityGroupId" : {"Ref" : "BastionSG"}
+					},
+					{
+						"FromPort" : "80",
+						"ToPort" : "80",
+						"IpProtocol" : "tcp",
+						"SourceSecurityGroupId" : {"Ref" : "BastionSG"}
+					}
+				]
+			}
+		},
+
+		"AutoScalingGroup" : {
+			"Type" : "AWS::AutoScaling::AutoScalingGroup",
+			"Properties" : {
+				"MaxSize" : "2",
+				"MinSize" : "1",
+				"LaunchConfigurationName" : {"Ref" : "AutoScalingLaunchConfig"},
+				"VPCZoneIdentifier" : ["subnet-5e43f317","subnet-8f6af4e8"]
+			}
+		},
+
+		"AutoScalingPolicy" : {
+			"Type" : "AWS::AutoScaling::ScalingPolicy",
+			"Properties" : {
+				"AdjustmentType" : "ChangeInCapacity",
+				"AutoScalingGroupName" : {"Ref" : "AutoScalingGroup"},
+				"PolicyType" : "SimpleScaling",
+				"ScalingAdjustment" : "1"
+			}
+		}
+	},
+
+	"Outputs" : {
+		"ASLaunchConfigName" : {
+			"Description" : "Name of the AutoScaling LaunchConfiguration",
+			"Value" : {"Ref" : "AutoScalingLaunchConfig" }
+		},
+		"ASGroupName" : {
+			"Description" : "Name of the AutoScaling Group",
+			"Value" : {"Ref" : "AutoScalingGroup"}
+		},
+		"ASPolicyName" : {
+			"Description" : "Name of the Auto Scaling Policy Name",
+			"Value" : {"Ref" : "AutoScalingPolicy"}
+		}
+	}
+}

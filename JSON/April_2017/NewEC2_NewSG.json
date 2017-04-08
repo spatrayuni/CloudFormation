@@ -1,0 +1,106 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "Create a New EC2 instance with New Security group on Public Subnet",
+
+	"Parameters" : {
+		"InstanceType" : {
+			"Description" : "Provide the InstanceType",
+			"Type" : "String",
+			"Default" : "t2.small"
+		},
+		"AMIId" : {
+			"Description" : "Provide the AMI",
+			"Type" : "String",
+			"Default" : "ami-c5ec64a5"
+		},
+		"VPCId" : {
+			"Description" : "Provide VPC ID",
+			"Type" : "AWS::EC2::VPC:Id",
+			"Default" : "vpc-583f7f3f"
+		},
+		"KeyName" : {
+			"Description" : "Provide KeyName",
+			"Type" : "String",
+			"Default" : "IntuitKey_Personal.pem"
+		},
+		"Subnet" : {
+			"Description" : "Provide Subnet IDs",
+			"Type" : "String",
+			"Default" : "subnet-5e43f317"
+		}
+	},
+
+	"Resources" : {
+		"WebSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Creating Web Security Group",
+				"VPCId" : { "Ref" : "VPCId"},
+				"SecurityGroupIngress" : [ 
+					{
+						"FromPort" : "80",
+						"ToPort" : "80",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.10/32"
+					},
+					{
+						"FromPort" : "80",
+						"ToPort" : "80",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.11/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.10/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.11/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.10/32"
+					},
+					{
+						"FromPort" : "22",
+						"ToPort" : "22",
+						"IpProtocol" : "tcp",
+						"CidrIp" : "103.15.250.11/32"
+					}]
+			}
+		},
+
+		"WebVM" : {
+			"Type" : "AWS::EC2::Instance",
+			"Properties" : {
+				"ImageId" : { "Ref" : "AMIId"},
+				"InstanceType" : { "Ref" : "InstanceType"},
+				"KeyName" : { "Ref" : "KeyName"},
+				"SecurityGroup" : {"Ref" : "WebSG"},
+				"SubnetId" : { "Ref" : "Subnet"},
+				"Tags" : {
+					"Key" : "Name",
+					"Value" : "PSD_VM1_Web"
+				}
+			}
+		}
+	},
+
+	"Outputs" : {
+		"WebSGName" : {
+			"Description" : "Name of the Security Group",
+			"Value" : { "Ref" : "WebSG"}
+		},
+		"WebInstanceName" : {
+			"Description" : "Name of the EC2 Instance",
+			"Value" : { "Ref" : "WebVM"}
+		}
+	}
+}
