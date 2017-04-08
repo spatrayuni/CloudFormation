@@ -17,7 +17,7 @@
 		"Key" : {
 			"Description" : "Key Name of your choice",
 			"Type" : "AWS::EC2::KeyPair::KeyName",
-			"Default" : "IntuitKey_Personal.pem"
+			"Default" : "IntuitKey_Personal"
 		},
 		"BastionSG" : {
 			"Description" : "Bastion SG group",
