@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a Security Group to allow a single port from Intuit Egress CIDRs
+Metadata:
+  Name: oip-intuit-cidr-ingress
+  Version: 0.1.0
+Parameters:
+  Port:
+    Description: The port to allow inbound from Intuit public CIDRs
+    Type: Number
+    Default: 22
+  VpcId:
+    Description: The VPC ID
+    Type: AWS::EC2::VPC::Id
+  Name:
+    Description: The name of the security group will be post fixed by the port
+    Type: String
+    Default: intuit-cidr-ingress
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub Allows in TCP:${Port} from Intuit public CIDR ( https://github.intuit.com/SecurePatterns/acls/blob/master/INTUIT-IP-RANGES.md)
+      SecurityGroupIngress:
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 173.240.160.0/21 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 173.240.168.0/22 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 206.108.40.0/21 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 199.16.136.0/21 # AS11641 ? LVDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 12.179.132.0/22 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 208.188.32.192/29 # Reno (CBS Payroll)
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 204.119.100.0/22 # Menlo Park (INEX-INTUIT / SPRINT-CC777F (NET-204-119-64-0-1))
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 12.157.155.0/24 # WDH (ATT NET12 (NET-12-0-0-0-0) / SPRINTLINK (NET-65-162-137-0-1))
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 65.162.137.0/24 # WDH (ATT NET12 (NET-12-0-0-0-0) / SPRINTLINK (NET-65-162-137-0-1))
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 12.148.72.0/23 # Plano (ATT NET12 (NET-12-0-0-0-0) / INTUIT-208-23 (NET-198-31-208-0-1))
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 198.31.208.0/23 # Plano (ATT NET12 (NET-12-0-0-0-0) / INTUIT-208-23 (NET-198-31-208-0-1))
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 65.204.229.0/24 # CORP - US (Intuit / UUNET65 (NET-65-192-0-0-1))
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 64.34.20.0/24 # Intuit Canada / PEER1--INTUIT-CANADA-01
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 12.149.172.0/22 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 103.15.250.0/24 # CORP - International (INTUIT-IN (Building 8 - Pritech Tech Park SEZ (EcoSpace) - Belandur Village Varthur Hobli, Bangalore, IN))
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 63.84.108.0/23 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 208.243.0.0/23 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 199.187.152.0/23 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 199.187.156.0/24 # QDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 199.187.157.0/24 # LVDC
+        -
+          IpProtocol: tcp
+          FromPort: !Ref Port
+          ToPort: !Ref Port
+          CidrIp: 173.240.172.0/23 # LVDC
+      VpcId: !Ref VpcId
+      Tags:
+        -
+          Key: Name
+          Value: !Sub ${Name}-tcp-${Port}
+Outputs:
+  SecurityGroupId:
+    Export:
+      Name: !Sub ${VpcId}:${Name}-tcp-${Port}:id
+    Value: !Ref SecurityGroup

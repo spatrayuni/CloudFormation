@@ -1,0 +1,40 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "Creates EC2 Instance with Availability Zone, Image ID, Instance Type, Subnet ID & Security Group ID",
+
+	"Metadata" : {
+		"Name" : "Santhosh-EC2-Basic",
+		"Version" : "0.1.0"
+	},
+
+	"Parameters" : {
+		"InstanceType" : {
+			"Description" : "EC2 Instance Type",
+			"Type" : "String",
+			"Default" : "t2.small"
+		},
+		"AMIId" : {
+			"Description" : "Default AMI ID",
+			"Type" : "String",
+			"Default" : "ami-0b7af46b"
+		},
+		"SubnetId" : {
+			"Description" : "Subnet ID",
+			"Type" : "String",
+			"Default" : "subnet-5e43f317"
+		}
+	},
+
+	"Resources" : {
+		"PSDVM" : {
+			"Type" : "AWS::EC2::Instance",
+			"Properties" : {
+				"ImageId" : { "Ref" : "AMIId" },
+				"SubnetId" : { "Ref" : "SubnetId" },
+				"SecurityGroupIds" : ["sg-d68e9cae"],
+				"InstanceType" : {"Ref" : "InstanceType"}
+			}
+		}
+	}
+}

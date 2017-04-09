@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a full stack for ngwi (EC2 AutoScalingGroup ELB)
+
+Metadata:
+  Name: ngwi
+  Version: 1.1.0
+
+Parameters:
+  WebServerPort:
+    Default: 443
+    Description: TCP/IP port for the WordPress web server
+    Type: Number
+
+
+
+
+Resources:
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        -
+          PolicyName: Policy
+          PolicyDocument:
+            Statement:
+              -
+                Effect: Allow
+                Action: "*"
+                Resource: "*"
+
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref Role
+  fdsautoscaling:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      AvailabilityZones: [us-west-2a,us-west-2b,us-west-2c]
+      VPCZoneIdentifier: [subnet-3d75eb5a,subnet-8859e9c1,subnet-93a6b3cb]
+      LaunchConfigurationName: !Ref fdsautoscalingLaunchConfiguration
+      MaxSize: 9
+      MinSize: 6
+      LoadBalancerNames:
+        - Ref: fdspublicelb
+
+
+  fdsautoscalingLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      IamInstanceProfile: !Ref InstanceProfile
+      ImageId: ami-81b53fe1
+      InstanceType: t2.micro
+      KeyName: dev_ssh_kp
+      SecurityGroups:
+        - sg-b3d9c1cb
+  fdspublicelb:
+    Type: "AWS::ElasticLoadBalancing::LoadBalancer"
+    Properties:
+      Subnets: [subnet-3e75eb59,subnet-94a6b3cc,subnet-8a59e9c3]
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort:
+          Ref: WebServerPort
+        Protocol: HTTP
+      SecurityGroups: 
+        - sg-13b45968
