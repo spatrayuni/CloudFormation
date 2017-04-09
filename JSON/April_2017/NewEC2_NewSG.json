@@ -88,7 +88,12 @@
 				"Tags" : [{
 					"Key" : "Name",
 					"Value" : "PSD_VM1_Web"
-				}]
+				}],
+				"NetworkInterfaces": [ {
+      				"AssociatePublicIpAddress": "true",
+      				"DeviceIndex": "0",
+      				"SubnetId": { "Ref" : "SubnetId" }
+      			}]
 			}
 		}
 	},
@@ -101,6 +106,14 @@
 		"WebInstanceName" : {
 			"Description" : "Name of the EC2 Instance",
 			"Value" : { "Ref" : "WebVM"}
+		},
+		"WebInstancePvtIP" : {
+			"Description" : "Private IP",
+			"Value" : { "Fn::GetAtt" : [ "WebVM", "PrivateIp" ] }
+		},
+		"WebInstancePubIP" : {
+			"Description" : "Public IP",
+			"Value" : { "Fn::GetAtt" : [ "WebVM", "PublicIp" ] }
 		}
 	}
 }
