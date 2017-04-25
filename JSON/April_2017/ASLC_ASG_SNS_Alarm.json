@@ -1,0 +1,256 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "Creates Auto Scaling Group",
+
+	"Parameters" : {
+
+		"ImageId" : {
+			"Description" : "Provides the AMI ID",
+			"Type" : "AWS::EC2::Image::Id",
+			"Default" : "ami-74a63514"
+		},
+
+		"InstanceType" : {
+			"Description" : "Provides AMI InstanceType",
+			"Type" : "String",
+			"Default" : "t2.micro"
+		},
+
+		"KeyName" : {
+			"Description" : "Provide the Key Pair Information",
+			"Type" : "AWS::EC2::KeyPair::KeyName",
+			"Default" : "IntuitKey_Personal"
+		},
+
+		"BastionSecurityGroup" : {
+			"Description" : "Provide the Bastion SG",
+			"Type" : "AWS::EC2::SecurityGroup::Id",
+			"Default" : "sg-0816ce73"
+		},
+
+		"MinSize" : {
+			"Description" : "Provide the MinSize for the AutoScaling Group",
+			"Type" : "Number",
+			"Default" : "2"
+		},
+
+		"MaxSize" : {
+			"Description" : "Provide the MaxSize for the AutoScaling Group",
+			"Type" : "Number",
+			"Default" : "2"
+		},
+
+		"TopicName" : {
+			"Description" : "Provide the Topic Name",
+			"Type" : "String",
+			"Default" : "ASTopic"
+		},
+
+		"Endpoint" : {
+			"Description" : "Provide Email for Notifications",
+			"Type" : "String",
+			"Default" : "santhoshdeepu_patrayuni@intuit.com"
+		},
+
+		"Hosttag" : {
+			"Description" : "Provides the Host Tag",
+			"Type" : "String",
+			"Default" : "PSD"
+		},
+
+		"VPCZoneIdentifier" : {
+			"Description" : "List of VPC Subnets to be used by AS",
+			"Type" : "List<AWS::EC2::Subnet::Id>",
+			"Default" : "subnet-5e43f317,subnet-8f6af4e8"
+		},
+
+		"ScalingAdjustmentUp" : {
+			"Description" : "Provide the Number to which the Scaling should go",
+			"Type" : "Number",
+			"Default" : "1"
+		},
+
+		"ScalingAdjustmentDown" : {
+			"Description" : "Provide the Number to which the Scaling should go",
+			"Type" : "Number",
+			"Default" : "-1"
+		},
+
+		"Period" : {
+			"Description" : "Provide Interval statistics",
+			"Type" : "Number",
+			"Default" : "120"
+		},
+
+		"HighThreshold" : {
+			"Description" : "Number to which CPU Utilization high is observed",
+			"Type" : "Number",
+			"Default" : "80"
+		},
+
+		"LowThreshold" : {
+			"Description" : "Number to which CPU Utilization high is observed",
+			"Type" : "Number",
+			"Default" : "10"
+		},
+
+		"VpcId" : {
+			"Description" : "Provide the VPC Id",
+			"Type" : "AWS::EC2::VPC::Id",
+			"Default" : "vpc-583f7f3f"
+		},
+
+		"SGName" : {
+			"Description" : "Name of the Instance SG Group",
+			"Type" : "String",
+			"Default" : "PSD-InstanceSG"
+		}
+	},
+
+	"Resources" : {
+
+		"SecurityGroupsInstance" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Security Group for Instance",
+				"SecurityGroupIngress" : {
+					"FromPort" : "22",
+					"IpProtocol" : "tcp",
+					"SourceSecurityGroupId" : {"Ref" : "BastionSecurityGroup"},
+					"ToPort" : "22"
+				},
+				"VpcId" : {"Ref":"VpcId"},
+				"Tags" : [{
+					"Key" : "Name",
+					"Value" : {"Ref" : "SGName"}
+				}]
+			}
+		},
+
+		"AutoScalingTopic" : {
+			"Type" : "AWS::SNS::Topic",
+			"Properties" : {
+				"DisplayName" : {"Ref" : "TopicName"},
+				"Subscription" : [{
+					"Endpoint" : {"Ref" : "Endpoint"},
+					"Protocol" : "email"
+				}],
+				"TopicName" : {"Ref" : "TopicName"}
+			}
+		},
+
+		"fdsautoscalingLaunchConfiguration" : {
+			"Type" : "AWS::AutoScaling::LaunchConfiguration",
+			"Properties" : {
+				"ImageId" : {"Ref" : "ImageId"},
+				"InstanceType" : {"Ref" : "InstanceType"},
+				"KeyName" : {"Ref" : "KeyName"},
+				"SecurityGroups" : [{"Ref" : "SecurityGroupsInstance"}]
+			}
+		},
+
+		"fdsautoscaling" : {
+			"Type" : "AWS::AutoScaling::AutoScalingGroup",
+			"Properties" : {
+				"DesiredCapacity" : {"Ref" : "MinSize"},
+				"HealthCheckType" : "EC2",
+				"LaunchConfigurationName" : {"Ref" : "fdsautoscalingLaunchConfiguration"},
+				"MaxSize" : {"Ref" : "MinSize"},
+				"MinSize" : { "Ref" : "MaxSize"},
+				"MetricsCollection" : [{
+					"Granularity" : "1Minute"
+				}],
+				"NotificationConfigurations" : [{
+					"TopicARN" : {"Ref" : "AutoScalingTopic"},
+					"NotificationTypes" : [
+          				"autoscaling:EC2_INSTANCE_LAUNCH",
+          				"autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
+         	 			"autoscaling:EC2_INSTANCE_TERMINATE",
+          				"autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
+        			]
+				}],
+				"Tags" :[{
+					"Key" : "Name",
+					"Value" : {"Ref" : "Hosttag"},
+					"PropagateAtLaunch": "true"
+				}],
+				"VPCZoneIdentifier" : {"Ref": "VPCZoneIdentifier"}
+			}
+		},
+
+		"fdsautoscalingaddpolicy" : {
+			"Type" : "AWS::AutoScaling::ScalingPolicy",
+			"Properties" : {
+				"AdjustmentType" : "ChangeInCapacity",
+				"AutoScalingGroupName" : {"Ref" : "fdsautoscaling"},
+				"ScalingAdjustment" : {"Ref" : "ScalingAdjustmentUp"}
+
+			}
+		},
+
+		"CPUHigh" : {
+			"Type" : "AWS::CloudWatch::Alarm",
+			"Properties" : {
+				"ActionsEnabled" : "true",
+				"AlarmActions" : [
+					{"Ref" : "fdsautoscalingaddpolicy"},
+					{"Ref" : "AutoScalingTopic"}
+				],
+				"AlarmDescription" : "Used for CPU Utilization > 80%",
+				"ComparisonOperator" : "GreaterThanThreshold",
+				"Dimensions" : [
+					{
+						"Name" : "fdsautoscaling",
+						"Value" : {"Ref" : "fdsautoscaling"}
+					}
+				],
+				"EvaluationPeriods" : "1",
+				"InsufficientDataActions" : [{"Ref" : "AutoScalingTopic"}],
+				"MetricName" : "CPUUtilization",
+				"Namespace" : "AWS/EC2",
+				"OKActions" : [{"Ref" : "AutoScalingTopic"}],
+				"Period" : {"Ref" : "Period"},
+				"Statistic" : "Average",
+				"Threshold" : {"Ref" : "HighThreshold"}
+			}
+		},
+
+		"fdsautoscalingreducepolicy" : {
+			"Type" : "AWS::AutoScaling::ScalingPolicy",
+			"Properties" : {
+				"AdjustmentType" : "ChangeInCapacity",
+				"AutoScalingGroupName" : {"Ref" : "fdsautoscaling"},
+				"ScalingAdjustment" : {"Ref" : "ScalingAdjustmentDown"}
+
+			}
+		},
+
+		"CPULow" : {
+			"Type" : "AWS::CloudWatch::Alarm",
+			"Properties" : {
+				"ActionsEnabled" : "true",
+				"AlarmActions" : [
+					{"Ref" : "fdsautoscalingreducepolicy"},
+					{"Ref" : "AutoScalingTopic"}
+				],
+				"AlarmDescription" : "Used for CPU Utilization < 10%",
+				"ComparisonOperator" : "LessThanThreshold",
+				"Dimensions" : [
+					{
+						"Name" : "fdsautoscaling",
+						"Value" : {"Ref" : "fdsautoscaling"}
+					}
+				],
+				"EvaluationPeriods" : "1",
+				"InsufficientDataActions" : [{"Ref" : "AutoScalingTopic"}],
+				"MetricName" : "CPUUtilization",
+				"Namespace" : "AWS/EC2",
+				"OKActions" : [{"Ref" : "AutoScalingTopic"}],
+				"Period" : {"Ref" : "Period"},
+				"Statistic" : "Average",
+				"Threshold" : {"Ref" : "LowThreshold"}
+			}
+		}
+	}
+}

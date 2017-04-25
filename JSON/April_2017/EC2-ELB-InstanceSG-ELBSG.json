@@ -1,0 +1,136 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "Creates 2 Web servers with New SG and adds to New ELB along with new ELB SG",
+
+	"Parameters" : {
+
+		"VPCId" : {
+			"Description" : "Provide VPC Id",
+			"Type" : "AWS::EC2::VPC::Id",
+			"Default" :	"vpc-583f7f3f"		
+		},
+
+		"BastionSG" : {
+			"Description" : "Provide Bastion SG",
+			"Type" : "AWS::EC2::SecurityGroup::Id",
+			"Default" : "sg-0816ce73"
+		},
+
+		"Subnets" : {
+			"Description" : "Provide the list of Subnets to be part of ELB",
+			"Type" : "List<AWS::EC2::Subnet::Id>",
+			"Default" : "subnet-5e43f317,subnet-8f6af4e8"
+		},
+
+		"AMIId" : {
+			"Description" : "Provide the AMI ID",
+			"Type" : "AWS::EC2::Image::Id",
+			"Default" : "ami-c5ec64a5"
+		},
+
+		"KeyName" : {
+			"Description" : "Provice Key",
+			"Type" : "AWS::EC2::KeyPair::KeyName",
+			"Default" : "IntuitKey_Personal"
+		}
+	},
+
+	"Resources" : {
+
+		"InstanceSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Used for Instance SG",
+				"SecurityGroupIngress" : {
+					"FromPort": "22",
+					"IpProtocol" : "tcp",
+					"SourceSecurityGroupId" : {"Ref" : "BastionSG"},
+					"ToPort" : "22"
+				},
+				"VpcId" : {"Ref" : "VPCId"},
+				"Tags" : [ {
+					"Key" : "Name",
+					"Value" : "PSDInstanceSG"
+				}]
+			}
+		},
+
+		"ELBSG" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "Used for ELB SG",
+				"SecurityGroupIngress" : {
+					"FromPort": "80",
+					"IpProtocol" : "tcp",
+					"SourceSecurityGroupId" : {"Ref" : "BastionSG"},
+					"ToPort" : "80"
+				},
+				"VpcId" : {"Ref" : "VPCId"},
+				"Tags" : [ {
+					"Key" : "Name",
+					"Value" : "PSDELBSG"
+				}]
+			}
+		},
+
+		"ELB" : {
+			"Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+			"Properties" : {
+				"HealthCheck" :{
+					"HealthyThreshold" : "2",
+					"Interval" : "60",
+					"Target" : "HTTP:80/index.html",
+					"Timeout" : "30",
+					"UnhealthyThreshold" : "2"
+				},
+				"Instances" : [{ "Ref" : "Instance"}],
+				"LoadBalancerName" : "PSDELB",
+				"Listeners" : [{
+					"InstancePort" : "80",
+					"InstanceProtocol" : "HTTP",
+					"LoadBalancerPort" : "80",
+					"Protocol" : "HTTP"
+				}],
+				"SecurityGroups" : [{"Ref" : "ELBSG"}],
+				"Subnets" : {"Ref" : "Subnets"},
+				"Tags" : [ {
+					"Key" : "Name",
+					"Value" : "PSDELB"
+				}]
+			}
+		},
+
+		"Instance" : {
+			"Type" : "AWS::EC2::Instance",
+			"Properties" : {
+				"ImageId" : {"Ref" : "AMIId"},
+				"InstanceType" : "t2.micro",
+				"KeyName" : {"Ref" : "KeyName"},
+				"SecurityGroupIds" : [{"Ref": "InstanceSG"}],
+				"SubnetId" : {"Fn::Select" : ["0",{"Ref":"Subnets"}]},
+				"Tags" : [ {
+					"Key" : "Name",
+					"Value" : "PSDInstance1"
+				}],
+				"UserData" : { "Fn::Base64" : { "Fn::Join" : ["",[
+					"#!/bin/bash \n",
+					"yum install httpd -y \n",
+					"service httpd start"
+				]]}
+				}
+			}
+		},
+
+		"SecurityGroupAssocation" : {
+			"Type" : "AWS::EC2::SecurityGroupIngress",
+			"Properties" : {
+				"FromPort" : "80",
+				"GroupId" : {"Ref": "InstanceSG"},
+				"IpProtocol" : "tcp",
+				"SourceSecurityGroupId" : {"Ref" : "ELBSG"},
+				"ToPort" : "80"
+			}
+		}
+	}
+}

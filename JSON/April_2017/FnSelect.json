@@ -1,0 +1,38 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "Testing Fn::Select",
+
+	"Parameters" : {
+		"CidrIp" : {
+			"Description" : "Select one",
+			"Type" : "CommaDelimitedList",
+			"Default" : "192.168.1.0/24,192.168.2.0/24"
+		}
+	},
+
+	"Resources" : {
+		"SGTest" : {
+			"Type" : "AWS::EC2::SecurityGroup",
+			"Properties" : {
+				"GroupDescription" : "SG Test",
+				"SecurityGroupIngress" : [
+					{
+						"IpProtocol" : "tcp",
+            			"FromPort" : "80",
+            			"ToPort" : "80",
+            			"CidrIp" : {"Fn::Select" : ["0", {"Ref" : "CidrIp"}]}
+					},
+
+					{
+						"IpProtocol" : "tcp",
+            			"FromPort" : "80",
+            			"ToPort" : "80",
+            			"CidrIp" : {"Fn::Select" : ["1", {"Ref":"CidrIp"}]}				
+					}
+				],
+				"VpcId" : "vpc-583f7f3f"
+			}
+		}
+	}
+}

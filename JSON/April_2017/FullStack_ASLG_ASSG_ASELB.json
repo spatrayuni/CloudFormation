@@ -1,0 +1,223 @@
+{
+	"AWSTemplateFormatVersion" : "2010-09-09",
+
+	"Description" : "Creates a full stack for ngwi (EC2 AutoScalingGroup ELB)",
+
+	"Metadata" : {
+		"Name" : "ngwi",
+		"Version" : "1.1.0"
+	},
+
+	"Parameters" : {
+		"MinSize" : {
+			"Description" : "Provide the Min Size of Instances",
+			"Type" : "Number",
+			"Default" : "2"
+		},
+		"MaxSize" : {
+			"Description" : "Provide the Max Size of Instances",
+			"Type" : "Number",
+			"Default" : "4"
+		},
+		"VPCZoneIdentifier" : {
+			"Description" : "Provide list of VPCZoneIdentifier",
+			"Type" : "List<String>",
+			"Default" : ["subnet-5e43f317","subnet-8f6af4e8"]
+		},
+		"KeyName" : {
+			"Description" : "Provide the Key Name",
+			"Type" : "AWS::EC2::KeyPair::KeyName",
+			"Default" : "IntuitKey_Personal.pem"
+		},
+		"ImageId" : {
+			"Description" : "Provide AMI ID",
+			"Type" : "String",
+			"Default" : "ami-c5ec64a5"
+		},
+		"SecurityGroupsInstance" : {
+			"Description" : "Default Security Group",
+			"Type" : "List<String>",
+			"Default" : ["sg-8cbe9cf4"]
+		},
+		"InstanceType" : {
+			"Description" : "Provide Instance Type",
+			"Type" : "List<String>",
+			"Default" : ["t2.small"]
+		},
+		"ScalingAdjustmentup" : {
+			"Description" : "Provide Scaling Adjustment",
+			"Type" : "Number",
+			"Default" : "1"
+		},
+		"ScalingAdjustmentdown" : {
+			"Description" : "Provide Scaling Adjustment",
+			"Type" : "Number",
+			"Default" : "-1"
+		},
+		"SubnetsELB" : {
+			"Description" : "Provide the Subnet ID for ELB",
+			"Type" : "List<String>",
+			"Default" : ["subnet-5e43f317","subnet-8f6af4e8"]
+		},
+		"SecurityGroupsELB" : {
+			"Description" : "Provice the ELB Security Group",
+			"Type" : "List<String>",
+			"Default" : ["sg-8cbe9cf4"]
+		},
+		"Hosttag" : {
+			"Description" : "Provide Host tag",
+			"Type" : "String",
+			"Default" : "ngwi-qa-1"
+		}
+
+	},
+
+	"Resources" : {
+
+		"fdsautoscalingLaunchConfiguration" : {
+			"Type" : "AWS::AutoScaling::LaunchConfiguration",
+			"Properties" : {
+				"ImageId" : {"Ref" : "ImageId"},
+				"KeyName" : {"Ref" : "KeyName"},
+				"SecurityGroups" : {"Ref" : "SecurityGroupsInstance"},
+				"InstanceType" : {"Ref" : "InstanceType"}
+			}
+		},
+
+		"fdsautoscaling" : {
+			"Type" : "AWS::AutoScaling::AutoScalingGroup",
+			"Properties" : {
+				"VPCZoneIdentifier" : {"Ref" : "VPCZoneIdentifier"},
+				"MinSize" : {"Ref" : "MinSize"},
+				"MaxSize" : { "Ref" : "MaxSize"},
+				"LaunchConfigurationName" : "fdsautoscalingLaunchConfiguration",
+				"LoadBalancerNames" : {"Ref": "fdspublicelb"},
+				"NotificationConfigurations" : [ {
+        			"TopicARN" : { "Ref" : "AutoScaling_Alarm" },
+        			"NotificationTypes" : [
+          				"autoscaling:EC2_INSTANCE_LAUNCH",
+          				"autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
+          				"autoscaling:EC2_INSTANCE_TERMINATE",
+          				"autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
+          			]
+        		}],
+				"Tags" : [{
+					"Key" : "Name",
+					"Value" : {"Ref" : "Hosttag"},
+					"PropagateAtLaunch" : "true"
+				}]
+			}
+		},
+
+		"fdsautoscalingaddpolicy" : {
+			"Type" : "AWS::AutoScaling::ScalingPolicy",
+			"Properties" : {
+				"AdjustmentType" : "ChangeInCapacity",
+				"AutoScalingGroupName" : "fdsautoscaling",
+				"ScalingAdjustment" : {"Ref" : "ScalingAdjustmentup"}
+			}
+		},
+
+		"fdsautoscalingreducepolicy" : {
+			"Type" : "AWS::AutoScaling::ScalingPolicy",
+			"Properties" : {
+				"AdjustmentType" : "ChangeInCapacity",
+				"AutoScalingGroupName" : "fdsautoscaling",
+				"ScalingAdjustment" : {"Ref" : "ScalingAdjustmentdown"}
+			}
+		},
+
+		"CPUHigh" : {
+			"Type" : "AWS::CloudWatch::Alarm",
+			"Properties" : {
+				"ActionsEnabled" : "true",
+				"AlarmActions" : {"Ref" : "fdsautoscalingaddpolicy"},
+				"AlarmDescription" : "It brings up a new instance if the CPU is high",
+				"Dimensions": [ {
+         			"Name": "AutoScalingGroupName",
+         			"Value": { "Ref": "asGroup" }
+      			} ],
+				"ComparisonOperator" : "GreaterThanThreshold",
+				"EvaluationPeriods" : "1",
+				"MetricName" : "CPU Util",
+				"Namespace" : "AWS/EC2",
+				"Period" : "60",
+				"Statistic" : "Average",
+				"Threshold" : "10"
+			}
+		},
+
+		"CPULow" : {
+			"Type" : "AWS::CloudWatch::Alarm",
+			"Properties" : {
+				"ActionsEnabled" : "true",
+				"AlarmActions" : {"Ref" : "fdsautoscalingreducepolicy"},
+				"AlarmDescription" : "It brings down a new instance if the CPU is low",
+				"Dimensions": [ {
+         			"Name": "AutoScalingGroupName",
+         			"Value": { "Ref": "asGroup" }
+      			} ],
+				"ComparisonOperator" : "LessThanThreshold",
+				"EvaluationPeriods" : "1",
+				"MetricName" : "CPU Util",
+				"Namespace" : "AWS/EC2",
+				"Period" : "60",
+				"Statistic" : "Average",
+				"Threshold" : "10"
+			}
+		},
+
+		"AutoScalingTopic" : {
+			"Type" : "AWS::SNS::Topic",
+			"Properties" : {
+				"DisplayName" : "AutoScaling_Alarm",
+				"Subscription" : [{"Ref" : "AutoScalingSubscription"}],
+				"TopicName" : "AutoScaling_Alarm"
+			}
+		},
+
+		"AutoScalingSubscription" : {
+			"Type" : "AWS::SNS::Subscription",
+			"Properties" : {
+				"Endpoint" : "santhoshdeepu_patrayuni@intuit.com",
+				"Protocol" : "email",
+				"TopicArn" : { "Ref" : "AutoScalingTopic"}
+			}
+		},
+
+		"fdspublicelb" : {
+			"Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+			"Properties": {
+				"ConnectionDrainingPolicy" : {
+					"Enabled" : "true",
+					"Timeout" : "300"
+				},
+				"ConnectionSettings" : {
+					"IdleTimeout" : "120"
+				},
+				"CrossZone" : "true",
+				"HealthCheck" : {
+					"HealthyThreshold" : "5",
+					"Interval" : "30",
+					"Timeout" : "5",
+					"UnhealthyThreshold" : "2",
+					"Target" : "HTTP:80/index.html"
+				},
+				"LoadBalancerName" : "FDS-AutoScaling-ELB",
+				"Listeners" : {
+					"InstancePort" : "80",
+					"InstanceProtocol" : "HTTP",
+					"LoadBalancerPort" : "80",
+					"Protocol" : "80"
+				},
+				"SecurityGroups" : [{"Ref" : "SecurityGroupsELB"}],
+				"Subnets" : {"Ref" : "SubnetsELB"},
+				"Tags" : [{
+					"Key" : "Name",
+					"Value" : {"Ref" : "Hosttag"},
+					"PropagateAtLaunch" : "true"
+				}]
+		   }
+		}
+	}
+}
