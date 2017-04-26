@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Nested Main Template
+
+Parameters: 
+  VPCId :
+    Description: Provide VPC ID
+    Type: AWS::EC2::VPC:ID
+    Default: vpc-583f7f3f
+
+Resources:
+  SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Creates SG
+      VPCId: 
+        Ref: VPCId
+      SecurityGroupIngress: 
+      -   {
+            "IpProtocol" : "tcp",
+            "FromPort" : "80",
+            "ToPort" : "80",
+            "CidrIp" : "103.15.250.10/32"
+          },
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : "80",
+            "ToPort" : "80",
+            "CidrIp" : "103.15.250.11/32"
+          }
