@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Nested Main Template
+
+Parameters: 
+  AMI : 
+    Description: Provide ImageId
+    Type: AWS::EC2::Image::Id
+    Default: ami-6f46da0f
+
+  VPCId :
+    Description: Provide VPC ID
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-583f7f3f
+
+Resources:
+  SGStack:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/SecurityGroup.yaml"
+      Parameters:
+        VPCId:
+          Ref: VPCId
+
+  InstanceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/SingleEC2.yaml"
+      Parameters:
+        AMI: 
+          Ref: AMI
+        SG:
+          Ref: SG
+
+
+
+
