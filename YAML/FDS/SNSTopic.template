@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates SNS Topic & Subscription
+
+Parameters:
+  TopicName:
+    Description: Name of SNS Topic
+    Type: String
+
+  Endpoint:
+    Description: Email address for Alarm Notification
+    Type: String
+
+Resources:
+  Topic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: 
+        !Sub ${TopicName}-SNSTopic
+      Subscription:
+      - Endpoint:
+          Ref: Endpoint
+        Protocol: email
+
+Outputs:
+  SNSTopicName:
+    Description: Name of the SNS Topic
+    Value:
+      !GetAtt Topic.TopicName 
+  SNSTopicARN:
+    Description: SNS Topic ARN
+    Value:
+      Ref: Topic

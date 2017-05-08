@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates AutoScaling with Upsize & DownSize policies with Alarm notifications
+
+Parameters:
+
+  VPCZoneIdentifier:
+    Description: List of VPCZoneIdentifier
+    Type: List<AWS::EC2::Subnet::Id>
+
+  MinSize:
+    Description: MinSize of Instance
+    Type: Number
+
+  MaxSize:
+    Description: MaxSize of Instance
+    Type: Number
+
+  ImageId:
+    Description: The AMIID for Instance
+    Type: AWS::EC2::Image::Id
+
+  InstanceType:
+    Description: The InstanceType of Instance
+    Type: String
+
+  InstanceSG:
+    Description: Provide Instance Security Group Id
+    Type: AWS::EC2::SecurityGroup::Id
+
+  Hosttag:
+    Description: Host Tag
+    Type: String
+
+  KeyName:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+  PublicELB:
+    Description: Provide the ELB Name
+    Type: String
+
+  SNSTopicARN:
+    Description: Provide SNS Topic
+    Type: String
+
+  ScalingAdjustmentUp:
+    Description: Scaling Adjustment for addition
+    Type: Number
+
+  ScalingAdjustmentDown:
+    Description: Scaling Adjustment for reduction
+    Type: Number
+
+Resources:
+
+  fdsautoscalingLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: 
+        Ref: ImageId
+      InstanceType:
+        Ref: InstanceType
+      KeyName: 
+        Ref: KeyName
+      SecurityGroups:
+        - Ref: InstanceSG
+      UserData: 
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash
+
+            sudo echo "ServiceName="${SERVICE} > /var/tmp/applicationfile
+            sudo echo "Component="${COMPONENT} >> /var/tmp/applicationfile
+            sudo echo "CodeVerion="${CODEVERSION} >> /var/tmp/applicationfile
+            sudo echo "Environment="${ENV} >> /var/tmp/applicationfile
+            sudo sed -i s/CHANGE_VERSION/${CODEVERSION}/g /tmp/packer-chef-solo/cookbooks-0/fdp_docv2_aws/attributes/default.rb
+            sudo sed -i s/CHANGE_ENV/${ENV}/g /tmp/packer-chef-solo/cookbooks-0/fdp_docv2_aws/attributes/default.rb
+            sh /usr/local/devops/bin/application_install_ws.sh
+            # restart crond
+            service crond restart
+
+            yum install -y aws-cfn-bootstrap
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource fdsautoscaling --region ${AWS::Region}
+
+
+  fdsautoscaling:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      DesiredCapacity:
+        Ref: MinSize
+      LaunchConfigurationName:
+        Ref: fdsautoscalingLaunchConfiguration
+      LoadBalancerNames:
+      - Ref: PublicELB
+      MaxSize: 
+        Ref: MaxSize
+      MetricsCollection:
+      - Granularity: 1Minute
+        Metrics:   
+          - GroupMinSize
+          - GroupMaxSize
+      MinSize: 
+        Ref: MinSize
+      NotificationConfigurations:
+      - NotificationTypes:
+          - autoscaling:EC2_INSTANCE_LAUNCH
+          - autoscaling:EC2_INSTANCE_LAUNCH_ERROR
+          - autoscaling:EC2_INSTANCE_TERMINATE
+          - autoscaling:EC2_INSTANCE_TERMINATE_ERROR
+        TopicARN:
+          Ref: SNSTopicARN
+      Tags:
+      - Key: Name
+        Value:
+          Ref: Hosttag
+        PropagateAtLaunch: true
+      VPCZoneIdentifier:
+        Ref: VPCZoneIdentifier
+
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 1
+        MinInstancesInService: 1
+        PauseTime: PT5M
+        WaitOnResourceSignals: true
+
+### AutoScaling Policy for Instance addition
+
+  fdsautoscalingaddpolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: 
+        Ref: fdsautoscaling
+      Cooldown: 300
+      ScalingAdjustment:
+        Ref: ScalingAdjustmentUp
+
+### AutoScaling Policy for Instance addition
+
+  fdsautoscalingdownpolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: 
+        Ref: fdsautoscaling
+      Cooldown: 300
+      ScalingAdjustment : 
+        Ref: ScalingAdjustmentDown
+
+Outputs:
+
+  AutoScalingLaunchConfiguration:
+    Description: AutoScaling Launch Configuration
+    Value:
+      Ref: fdsautoscalingLaunchConfiguration
+  AutoScalingGroup:
+    Description: AutoScaling Group
+    Value:
+      Ref: fdsautoscaling
+  ScaleUpPolicy:
+    Description: Scale up Policy
+    Value: 
+      Ref: fdsautoscalingaddpolicy
+  ScaleDownPolicy:
+    Description: Scale down Policy
+    Value:
+      Ref: fdsautoscalingdownpolicy
+
+
+
+
+
+

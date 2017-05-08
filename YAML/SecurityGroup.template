@@ -3,17 +3,17 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Nested Main Template
 
 Parameters: 
-  VPCId :
+  VPCId:
     Description: Provide VPC ID
     Type: AWS::EC2::VPC::Id
     Default: vpc-583f7f3f
 
 Resources:
-  SG:
+  SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Creates SG
-      VPCId: 
+      VpcId: 
         Ref: VPCId
       SecurityGroupIngress: 
       - IpProtocol : "tcp"
@@ -26,7 +26,7 @@ Resources:
         CidrIp : "103.15.250.11/32"
 
 Outputs:
-  SGName:
-    Description: Name of SG created
-    Value: 
-      Ref: SG
+  SG:
+    Description: Security Group
+    Value:
+      Ref: SecurityGroup

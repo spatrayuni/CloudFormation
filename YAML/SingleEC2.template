@@ -2,11 +2,16 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Description: Nested Main Template
 
-Parameters: 
-  AMI : 
+Parameters:
+
+  AMI: 
     Description: Provide ImageId
-    Type: AWS::EC2::Image::ImageId
+    Type: AWS::EC2::Image::Id
     Default: ami-6f46da0f
+
+  SG:
+    Description: Provide Security Group Name
+    Type: AWS::EC2::SecurityGroup::Id
 
 Resources:
   PSDInstance:
@@ -22,3 +27,13 @@ Resources:
       Tags:
       - Key: Name
         Value: PSD
+
+Outputs:
+  Instance:
+    Description: Instance Name
+    Value: 
+      !Ref PSDInstance
+  InstanceIp:
+    Description: Instance Ip
+    Value:
+      !GetAtt PSDInstance.PrivateIp

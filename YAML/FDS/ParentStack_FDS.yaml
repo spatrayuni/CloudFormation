@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Description : Creates a full stack for DocumentService
+
+# Metadata section for ct template.
+Metadata:
+  Name: DocumentService
+  Version: 1.1.2
+
+# Parameters section for ct template.
+Parameters:
+
+  BastionSecurityGroup:
+    Description: Provide Bastion Security Group
+    Type: AWS::EC2::SecurityGroup::Id
+
+  ELBSubnets:
+    Description: The KeyName associated Instance
+    Type: List<AWS::EC2::Subnet::Id>
+
+  ELBCidrIp:
+    Description: Provice a list of CidrIp ranges that are allowed for ELB
+    Type: CommaDelimitedList
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})" 
+
+  Endpoint:
+    Description: Email address for Alarm Notification
+    Type: String
+
+  Hosttag:
+    Description: Host Tag
+    Type: String
+
+  ImageId:
+    Description: The AMIID for Instance
+    Type: AWS::EC2::Image::Id
+
+  InstanceType:
+    Description: The InstanceType of Instance
+    Type: String
+
+  KeyName:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+  MaxSize:
+    Description: MaxSize of Instance
+    Type: Number
+
+  MinSize:
+    Description: MinSize of Instance
+    Type: Number
+
+  ScalingAdjustmentUp:
+    Description: Scaling Adjustment for addition
+    Type: Number
+
+  ScalingAdjustmentDown:
+    Description: Scaling Adjustment for reduction
+    Type: Number
+
+  VpcId:
+    Description: Provide Current VPC ID
+    Type: AWS::EC2::VPC::Id
+
+  SERVICE:
+    Description: ServiceName
+    Type: String 
+
+  COMPONENT:
+    Description: Environment
+    Type: String
+
+  CODEVERSION:
+    Description: CodeVersion
+    Type: String 
+
+  ENV:
+    Description: Environment
+    Type: String
+
+# Coniditions Section
+
+Conditions: 
+  StackSelection: !Equals [Ref: COMPONENT, ws]
+
+# Resources Section
+
+Resources:
+
+  SNSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/cf-templates-wqdcwpewx2ek-us-west-2/CF-Templates/SNSTopic.template"
+      TimeoutInMinutes: 5
+      Parameters:
+        TopicName:
+          Ref: Hosttag
+        Endpoint:
+          Ref: Endpoint
+
+  InstanceSecurityGroupStack :
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL : "https://s3-us-west-2.amazonaws.com/cf-templates-wqdcwpewx2ek-us-west-2/CF-Templates/InstanceSecurityGroup.template"
+      TimeoutInMinutes : 5
+      Parameters:
+        VpcId: 
+          Ref : VpcId
+        BastionSG:
+          Ref : BastionSecurityGroup
+        SGName:
+          Ref: Hosttag
+
+  ELBStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: StackSelection
+    Properties:
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/cf-templates-wqdcwpewx2ek-us-west-2/CF-Templates/ELB.template"
+      TimeoutInMinutes : 5
+      Parameters:
+        VpcId: 
+          Ref : VpcId
+        SGName:
+          Ref: Hosttag
+        ELBCidrIp:
+          !Join [",",!Ref ELBCidrIp]
+        ELBSubnets:
+          !Join [",",!Ref ELBSubnets]
+        InstanceSG:
+          !GetAtt InstanceSecurityGroupStack.Outputs.InstanceSG
+
+  AutoScalingStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/cf-templates-wqdcwpewx2ek-us-west-2/CF-Templates/AutoScaling.template"
+      TimeoutInMinutes: 10
+      Parameters:
+        InstanceSG:
+          !GetAtt InstanceSecurityGroupStack.Outputs.InstanceSG
+        PublicELB:
+          !GetAtt ELBStack.Outputs.PublicELB
+        SNSTopicARN:
+          !GetAtt SNSStack.Outputs.SNSTopicARN
+        Hosttag:
+          Ref: Hosttag
+        MinSize:
+          Ref: MinSize
+        MaxSize:
+          Ref: MaxSize
+        ImageId:
+          Ref: ImageId
+        InstanceType:
+          Ref: InstanceType
+        KeyName:
+          Ref: KeyName
+        ScalingAdjustmentUp:
+          Ref: ScalingAdjustmentUp
+        ScalingAdjustmentDown:
+          Ref: ScalingAdjustmentDown
+        VPCZoneIdentifier:
+          !Join [",",!Ref ELBSubnets]
+
+  AutoScalingAlarm:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/cf-templates-wqdcwpewx2ek-us-west-2/CF-Templates/AutoScaling_Alarm.template"
+      TimeoutInMinutes: 5
+      Parameters:
+        AutoScalingGroup:
+          !GetAtt AutoScalingStack.Outputs.AutoScalingGroup
+        SNSTopicARN:
+          !GetAtt SNSStack.Outputs.SNSTopicARN
+        ScaleUpPolicy:
+          !GetAtt AutoScalingStack.Outputs.ScaleUpPolicy
+        ScaleDownPolicy:
+          !GetAtt AutoScalingStack.Outputs.ScaleDownPolicy
+
+Outputs:
+
+  InstanceSG:
+    Description: Instance Security Group
+    Value:
+      !GetAtt InstanceSecurityGroupStack.Outputs.InstanceSG
+
+  PublicELB:
+    Description: Public ELB
+    Value:
+      !GetAtt ELBStack.Outputs.PublicELB
+
+  ELBDNSName:
+    Description: ELB DNS Name
+    Value:
+      !GetAtt ELBStack.Outputs.ELBDNSName
+
+  ELBSecurityGroup:
+    Description: ELB Security Group Id
+    Value:
+      !GetAtt ELBStack.Outputs.ELBSecurityGroup
+
+  SNSTopicName:
+    Description: Name of the Security Group Name
+    Value:
+      !GetAtt SNSStack.Outputs.SNSTopicName
+
+  SNSTopicARN:
+    Description: SNS Topic ARN
+    Value:
+      !GetAtt SNSStack.Outputs.SNSTopicARN
+
+  AutoScalingLaunchConfiguration:
+    Description: AutoScaling Launch Configuration
+    Value:
+      !GetAtt AutoScalingStack.Outputs.AutoScalingLaunchConfiguration
+
+  AutoScalingGroup:
+    Description: AutoScaling Group
+    Value:
+      !GetAtt AutoScalingStack.Outputs.AutoScalingGroup
+
+  ScaleUpPolicy:
+    Description: Scale up Policy
+    Value: 
+      !GetAtt AutoScalingStack.Outputs.ScaleUpPolicy
+
+  ScaleDownPolicy:
+    Description: Scale down Policy
+    Value:
+      !GetAtt AutoScalingStack.Outputs.ScaleDownPolicy
+
+
+
+
+

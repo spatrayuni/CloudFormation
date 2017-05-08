@@ -3,12 +3,12 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Nested Main Template
 
 Parameters: 
-  AMI : 
+  AMI: 
     Description: Provide ImageId
     Type: AWS::EC2::Image::Id
     Default: ami-6f46da0f
 
-  VPCId :
+  VPCId:
     Description: Provide VPC ID
     Type: AWS::EC2::VPC::Id
     Default: vpc-583f7f3f
@@ -17,7 +17,8 @@ Resources:
   SGStack:
     Type: AWS::CloudFormation::Stack
     Properties: 
-      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/SecurityGroup.yaml"
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/SecurityGroup.template"
+      TimeoutInMinutes: 5
       Parameters:
         VPCId:
           Ref: VPCId
@@ -25,13 +26,31 @@ Resources:
   InstanceStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/SingleEC2.yaml"
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/SingleEC2.template"
+      TimeoutInMinutes: 5
       Parameters:
         AMI: 
           Ref: AMI
         SG:
-          Ref: SG
+          !GetAtt SGStack.Outputs.SG
 
+Outputs:
+  SecurityGroup:
+    Description: Newly created Security Group SecurityGroupId
+    Value:
+      !GetAtt SGStack.Outputs.SG
+
+  Instance:
+    Description: Newly created Instance
+    Value:
+      !GetAtt InstanceStack.Outputs.Instance
+
+  InstanceIp:
+    Description: Instance Id
+    Value:
+      !GetAtt InstanceStack.Outputs.InstanceIp
+
+  
 
 
 

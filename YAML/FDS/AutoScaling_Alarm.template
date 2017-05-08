@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates an Alarm for the AutoScaling Scaling up or down
+
+Parameters:
+
+  AutoScalingGroup:
+    Description: Provide the AutoScaling Group
+    Type: String
+
+  SNSTopicARN:
+    Description: Provide the SNS Topic ARN
+    Type: String
+
+  ScaleUpPolicy:
+    Description: Provide the AutoScaling Scaleup Policy
+    Type: String
+
+  ScaleDownPolicy:
+    Description: Provide the AutoScaling Scaledown Policy
+    Type: String
+
+Resources:
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Ref: SNSTopicARN
+        - Ref: ScaleUpPolicy
+      AlarmDescription: Scale-Up if the CPU is greater than 85%
+      AlarmName: CPUHighAlarm
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: AutoScalingGroup
+      EvaluationPeriods: 2
+      InsufficientDataActions:
+        - Ref: SNSTopicARN
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      OKActions:
+        - Ref: SNSTopicARN
+      Period: 60
+      Statistic: Average
+      Threshold: 85
+
+  LowCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Ref: SNSTopicARN
+        - Ref: ScaleDownPolicy
+      AlarmDescription: Scale-Down if the CPU is less than 10%
+      AlarmName: CPULowAlarm
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: AutoScalingGroup
+      EvaluationPeriods: 2
+      InsufficientDataActions:
+        - Ref: SNSTopicARN
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      OKActions:
+        - Ref: SNSTopicARN
+      Period: 60
+      Statistic: Average
+      Threshold: 10
+
+  UnHealthyHostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      ActionsEnabled: true
+      AlarmActions:
+        - Ref: SNSTopicARN
+        - Ref: ScaleUpPolicy
+      AlarmDescription: Add one instance if the ELB considers it unhealthy
+      AlarmName: UnHealthyHostAlarm
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: AutoScalingGroup
+      EvaluationPeriods: 5
+      InsufficientDataActions:
+        - Ref: SNSTopicARN
+      MetricName: UnHealthyHostCount
+      Namespace: AWS/ELB
+      OKActions:
+        - Ref: SNSTopicARN
+      Period: 60
+      Statistic: Average
+      Threshold: 0

@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates Security Group for ELB and uses CidrIP ranges as sources
+
+Parameters:
+  
+  VpcId:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::VPC::Id
+
+  SGName:
+    Description: Provide SG Group KeyName
+    Type: String
+
+  ELBCidrIp:
+    Description: Provice a list of CidrIp ranges that are allowed for ELB
+    Type: CommaDelimitedList
+
+  ELBSubnets:
+    Description: Provide all the Subnets to be associated
+    Type: List<AWS::EC2::Subnet::Id>
+
+  InstanceSG:
+    Description: Provide the Instance Security Group Id
+    Type: AWS::EC2::SecurityGroup::Id
+
+Resources:
+
+  ELBSecurityGroup: 
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName:
+        !Sub ${SGName}-ELBSG
+      GroupDescription: Creates ELB Security Group
+      SecurityGroupIngress:
+      - CidrIp: 
+          !Select [0, Ref: ELBCidrIp]
+        FromPort : 22
+        IpProtocol: 'tcp'
+        ToPort: 22
+      - CidrIp:         
+          !Select [1, Ref: ELBCidrIp]
+        FromPort: 22
+        IpProtocol: 'tcp'
+        ToPort: 22
+      VpcId:
+        Ref: VpcId
+
+  PublicELB:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      ConnectionDrainingPolicy:
+        Enabled: true
+        Timeout: 300
+      ConnectionSettings:
+        IdleTimeout: 120
+      CrossZone: true
+      HealthCheck:
+        HealthyThreshold: 2
+        Interval: 60
+        Target: HTTPS:8443/document-service/static/ltmhealth
+        Timeout: 30
+        UnhealthyThreshold: 2
+      LoadBalancerName:
+        !Sub ${SGName}-PublicELB
+      Listeners:
+      - InstancePort: '8443'
+        InstanceProtocol: TCP
+        LoadBalancerPort: '443'
+        Protocol: TCP
+      SecurityGroups:
+      - Ref: ELBSecurityGroup
+      Subnets:
+        Ref: ELBSubnets
+
+  AssociateELBSGtoInstanceSG:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      FromPort: 8443
+      ToPort: 8443
+      GroupId:
+        Ref: InstanceSG
+      IpProtocol: tcp
+      SourceSecurityGroupId: 
+        Ref: ELBSecurityGroup
+
+Outputs:
+
+  ELBSecurityGroup:
+    Description: ELB SecurityGroup
+    Value: 
+      Ref: ELBSecurityGroup
+
+  PublicELB:
+    Description: Public ELB
+    Value:
+      Ref: PublicELB
+
+  ELBDNSName:
+    Description: ELB Public DNS Name
+    Value:
+      !GetAtt PublicELB.DNSName
+
+
+  
+
+

@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates Security Group for Instance and uses Bastion Security Group as Source
+
+Parameters:
+
+  VpcId:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::VPC::Id
+
+  BastionSG:
+    Description: Provide Bastion Security Group
+    Type: AWS::EC2::SecurityGroup::Id
+
+  SGName:
+    Description: Provide SG Group KeyName
+    Type: String
+
+Resources:
+
+  InstanceSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 
+        !Sub ${SGName}-InstanceSG
+      GroupDescription: Creates Instance Security Group
+      SecurityGroupIngress:
+      - FromPort: 22
+        ToPort: 22
+        IpProtocol : 'tcp'
+        SourceSecurityGroupId: 
+          Ref: BastionSG
+      VpcId:
+        Ref: VpcId
+
+Outputs:
+    InstanceSG:
+      Description: Instance Security Group
+      Value: 
+        Ref: InstanceSG
+
