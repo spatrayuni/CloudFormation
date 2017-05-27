@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates a Hosted Zone and associates the ELB DNS Name
+
+Parameters:
+  ELBDNSName:
+    Description: Provide ELB DNS Name
+    Type: String
+    Default: "ngwi-qa-1-PublicELB-1342335844.us-west-2.elb.amazonaws.com"
+
+  CODEVERSION:
+    Description: CodeVersion
+    Type: String
+    Default: 1.2.16
+
+  COMPONENT:
+    Description: Environment
+    Type: String
+    Default: ws
+
+  ENV:
+    Description: Environment
+    Type: String
+    Default: qal
+
+  SERVICE:
+    Description: ServiceName
+    Type: String
+    Default: fdpdocv2
+
+  HostedZone:
+    Description: Provide the Hosted Zone Name
+    Type: String
+    Default: learn.intuit.net.
+
+  HostedZoneId:
+    Description: Provide the Hosted Zone HostedZoneId
+    Type: AWS::Route53::HostedZone::Id
+    Default: Z148YSNYOMPNX9
+
+Resources:
+  CreateRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName:  
+          Ref: ELBDNSName
+        EvaluateTargetHealth: false
+        HostedZoneId: Z1H1FL5HABSF5
+      HostedZoneId: 
+        Ref: HostedZoneId
+      Name: !Join ['',[!Ref SERVICE,-,!Ref COMPONENT,-,!Ref ENV,-,!Ref CODEVERSION,.,!Ref HostedZone]]
+      Type: A
+
+Outputs:
+  RecordSetName:
+    Description: Name of the RecordSet created
+    Value:
+      Ref: CreateRecordSet
+

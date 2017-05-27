@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates Security Group for ELB and uses CidrIP ranges as sources
+
+Parameters:
+  
+  VpcId:
+    Description: The VPC ID
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-a2f4c1c5
+
+  Name:
+    Description: The name of the security group will be post fixed by the port
+    Type: String
+    Default: intuit-cidr-ingress
+
+  Port:
+    Description: The port to allow inbound from Intuit public CIDRs
+    Type: Number
+    Default: 80
+
+  SGName:
+    Description: Provide SG Group KeyName
+    Type: String
+    Default: PSD
+
+  ELBSubnets:
+    Description: Provide all the Subnets to be associated
+    Type: List<AWS::EC2::Subnet::Id>
+    Default: "subnet-4ea75315,subnet-3dd6975a,subnet-73ee753a"
+
+Resources:
+
+  ELBSecurityGroup: 
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName:
+        !Sub ${SGName}-ELBSG
+      GroupDescription: Creates ELB Security Group
+      SecurityGroupIngress:
+        FromPort: 80
+        IpProtocol: tcp
+        SourceSecurityGroupId:
+          Fn::ImportValue:
+            !Sub ${VpcId}:${Name}-tcp-${Port}:id
+        ToPort: 80
+      VpcId:
+        Ref: VpcId
+
+  PublicELB:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      ConnectionDrainingPolicy:
+        Enabled: true
+        Timeout: 300
+      ConnectionSettings:
+        IdleTimeout: 120
+      CrossZone: true
+      HealthCheck:
+        HealthyThreshold: 2
+        Interval: 60
+        Target: HTTP:80/index.html
+        Timeout: 30
+        UnhealthyThreshold: 2
+      LoadBalancerName:
+        !Sub ${SGName}-PublicELB
+      Listeners:
+      - InstancePort: '80'
+        InstanceProtocol: TCP
+        LoadBalancerPort: '80'
+        Protocol: TCP
+      SecurityGroups:
+      - Ref: ELBSecurityGroup
+      Subnets:
+        Ref: ELBSubnets
+
+Outputs:
+
+  ELBSecurityGroup:
+    Description: ELB SecurityGroup
+    Value: 
+      Ref: ELBSecurityGroup
+
+  PublicELB:
+    Description: Public ELB
+    Value:
+      Ref: PublicELB
+
+  ELBDNSName:
+    Description: ELB Public DNS Name
+    Value:
+      !GetAtt PublicELB.DNSName
+
+
+  
+
+

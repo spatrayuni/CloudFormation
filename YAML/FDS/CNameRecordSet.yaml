@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description : Creates CName Records Set 
+
+Parameters:
+
+  CODEVERSION:
+    Description: CodeVersion
+    Type: String
+    Default: 1.2.16
+
+  COMPONENT:
+    Description: Environment
+    Type: String
+    Default: ws
+
+  ENV:
+    Description: Environment
+    Type: String
+    Default: qal
+
+  SERVICE:
+    Description: ServiceName
+    Type: String
+    Default: fdpdocv2
+
+  HostedZone:
+    Description: Provide the Hosted Zone Name
+    Type: String
+    Default: learn.intuit.net.
+
+  Choice:
+    Description: Provice Blue or Green
+    Type: String
+    Default: Blue
+
+Resources:
+  CNameRecordSet:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: ZY4X5YO84M8G3
+      RecordSets:
+        - Name: !Join [".",[!Ref SERVICE, !Ref COMPONENT, !Ref ENV, !Ref HostedZone]]
+          ResourceRecords: 
+            - !Join [".",[!Ref SERVICE, !Ref Choice, !Ref COMPONENT, !Ref ENV, !Ref HostedZone]]
+          SetIdentifier: "Blue Deployment"
+          TTL : 300
+          Type: CNAME
+          Weight: 100
+        - Name: !Join [".",[!Ref SERVICE, !Ref COMPONENT, !Ref ENV, !Ref HostedZone]]
+          ResourceRecords: 
+            - !Join [".",[!Ref SERVICE, !Ref Choice, !Ref COMPONENT, !Ref ENV, !Ref HostedZone]]
+          SetIdentifier: "Green Deployment"
+          TTL : 300
+          Type: CNAME
+          Weight: 0

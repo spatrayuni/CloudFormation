@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates a CName Record
+
+Parameters:
+
+  CODEVERSION:
+    Description: CodeVersion
+    Type: String
+    Default: 1.2.16
+
+  COMPONENT:
+    Description: Environment
+    Type: String
+    Default: ws
+
+  ENV:
+    Description: Environment
+    Type: String
+    Default: qal
+
+  SERVICE:
+    Description: ServiceName
+    Type: String
+    Default: fdpdocv2
+
+  HostedZoneId:
+    Description: Provide the Hosted Zone HostedZoneId
+    Type: AWS::Route53::HostedZone::Id
+    Default: Z148YSNYOMPNX9
+
+  HostedZone:
+    Description: Provide the Hosted Zone Name
+    Type: String
+    Default: learn.intuit.net.
+
+  Choice:
+    Description: Provide the Choice of Deployment
+    Type: String
+
+
+Resources:
+
+  CNameRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: 
+        !Join [".",[!Ref SERVICE, !Ref COMPONENT, !Ref ENV, !Ref HostedZone]]
+      ResourceRecords: 
+        - !Join [".",[!Ref SERVICE, !Ref Choice, !Ref COMPONENT, !Ref ENV, !Ref HostedZone]]
+      Type: CNAME
+      TTL: 300
+
+Outputs:
+
+  CNameRecord:
+    Description: Value of the CName Record
+    Value: !Ref CNameRecordSet
+    Export:
+      Name: !Sub ${AWS::StackName}-Name
+
+
+
+
+

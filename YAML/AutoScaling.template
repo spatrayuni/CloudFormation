@@ -73,48 +73,9 @@ Parameters:
 
 Resources:
 
-  ### IAM Role Resource
-
-  Role:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      Path: /
-      Policies:
-        -
-          PolicyName: Policy
-          PolicyDocument:
-            Statement:
-              -
-                Effect: Allow
-                Action: "*"
-                Resource:
-                  - "*"
-
-  InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: /
-      Roles:
-        - !Ref Role
-
   fdsautoscalingLaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      IamInstanceProfile: !Ref InstanceProfile
-      AssociatePublicIpAddress: true
-      BlockDeviceMappings:
-        - DeviceName: "/dev/xvdz"
-          Ebs:
-            VolumeSize: 60
-            VolumeType: gp2
       ImageId: 
         Ref: ImageId
       InstanceType:
@@ -126,7 +87,6 @@ Resources:
       UserData: 
         "Fn::Base64":
           !Sub |
-            #!/bin/bash -xe
             /usr/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource fdsautoscaling --region ${AWS::Region}
 
 

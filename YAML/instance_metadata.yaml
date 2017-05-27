@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Description : Creates a full stack for DocumentService
+
+Parameters:
+  AMIId:
+    Description: Provice Image Id
+    Type: AWS::EC2::Image::Id
+    Default: ami-6f46da0f
+
+  SecurityGroupId:
+    Description: Provide Security Group Id
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-0816ce73
+
+  KeyName:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: IntuitKey_Personal
+
+Resources:
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              wget: []
+    Properties:
+      ImageId: !Ref AMIId
+      KeyName: !Ref KeyName
+      InstanceType: t2.small
+      SecurityGroupIds:
+        - Ref: SecurityGroupId
+      SubnetId: subnet-5e43f317
+
+
+

@@ -4,21 +4,6 @@ Description: Creates AutoScaling with Upsize & DownSize policies with Alarm noti
 
 Parameters:
 
-  CODEVERSION:
-    Description: CodeVersion
-    Type: String
-    Default: 1.2.16
-
-  COMPONENT:
-    Description: Environment
-    Type: String
-    Default: ws
-
-  ENV:
-    Description: Environment
-    Type: String
-    Default: qal
-
   VPCZoneIdentifier:
     Description: List of VPCZoneIdentifier
     Type: List<AWS::EC2::Subnet::Id>
@@ -67,54 +52,11 @@ Parameters:
     Description: Scaling Adjustment for reduction
     Type: Number
 
-  SERVICE:
-    Description: ServiceName
-    Type: String
-
 Resources:
-
-  ### IAM Role Resource
-
-  Role:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      Path: /
-      Policies:
-        -
-          PolicyName: Policy
-          PolicyDocument:
-            Statement:
-              -
-                Effect: Allow
-                Action: "*"
-                Resource:
-                  - "*"
-
-  InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: /
-      Roles:
-        - !Ref Role
 
   fdsautoscalingLaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      IamInstanceProfile: !Ref InstanceProfile
-      AssociatePublicIpAddress: true
-      BlockDeviceMappings:
-        - DeviceName: "/dev/xvdz"
-          Ebs:
-            VolumeSize: 60
-            VolumeType: gp2
       ImageId: 
         Ref: ImageId
       InstanceType:
@@ -126,8 +68,20 @@ Resources:
       UserData: 
         "Fn::Base64":
           !Sub |
-            #!/bin/bash -xe
-            /usr/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource fdsautoscaling --region ${AWS::Region}
+            #!/bin/bash
+
+            sudo echo "ServiceName="${SERVICE} > /var/tmp/applicationfile
+            sudo echo "Component="${COMPONENT} >> /var/tmp/applicationfile
+            sudo echo "CodeVerion="${CODEVERSION} >> /var/tmp/applicationfile
+            sudo echo "Environment="${ENV} >> /var/tmp/applicationfile
+            sudo sed -i s/CHANGE_VERSION/${CODEVERSION}/g /tmp/packer-chef-solo/cookbooks-0/fdp_docv2_aws/attributes/default.rb
+            sudo sed -i s/CHANGE_ENV/${ENV}/g /tmp/packer-chef-solo/cookbooks-0/fdp_docv2_aws/attributes/default.rb
+            sh /usr/local/devops/bin/application_install_ws.sh
+            # restart crond
+            service crond restart
+
+            yum install -y aws-cfn-bootstrap
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource fdsautoscaling --region ${AWS::Region}
 
 
   fdsautoscaling:

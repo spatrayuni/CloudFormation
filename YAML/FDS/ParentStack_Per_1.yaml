@@ -115,7 +115,7 @@ Resources:
   SNSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/SNSTopic.template"
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd8/SNSTopic.template"
       TimeoutInMinutes: 5
       Parameters:
         TopicName:
@@ -126,7 +126,7 @@ Resources:
   InstanceSecurityGroupStack :
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL : "https://s3-us-west-2.amazonaws.com/psd26/InstanceSecurityGroup.template"
+      TemplateURL : "https://s3-us-west-2.amazonaws.com/psd8/InstanceSecurityGroup.template"
       TimeoutInMinutes : 5
       Parameters:
         VpcId: 
@@ -139,7 +139,7 @@ Resources:
   ELBStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/ELB.template"
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd8/ELB.template"
       TimeoutInMinutes : 5
       Parameters:
         VpcId: 
@@ -153,10 +153,31 @@ Resources:
         InstanceSG:
           !GetAtt InstanceSecurityGroupStack.Outputs.InstanceSG
 
+  RecordSetCreationStack:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd8/Route53_RecordSet.template"
+      TimeoutInMinutes: 5
+      Parameters:
+        ELBDNSName:
+          !GetAtt ELBStack.Outputs.ELBDNSName
+        CODEVERSION:
+          Ref: CODEVERSION
+        COMPONENT:
+          Ref: COMPONENT
+        ENV:
+          Ref: ENV
+        SERVICE:
+          Ref: SERVICE
+        HostedZone:
+          Ref: HostedZone
+        HostedZoneId:
+          Ref: HostedZoneId
+
   AutoScalingStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/AutoScaling.template"
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd8/AutoScaling.template"
       TimeoutInMinutes: 10
       Parameters:
         CODEVERSION:
@@ -195,7 +216,7 @@ Resources:
   AutoScalingAlarm:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/AutoScaling_Alarm.template"
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd8/AutoScaling_Alarm.template"
       TimeoutInMinutes: 5
       Parameters:
         AutoScalingGroup:
@@ -207,26 +228,7 @@ Resources:
         ScaleDownPolicy:
           !GetAtt AutoScalingStack.Outputs.ScaleDownPolicy
 
-  RecordSetCreationStack:
-    Type: AWS::CloudFormation::Stack
-    Properties: 
-      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/Route53_RecordSet.template"
-      TimeoutInMinutes: 5
-      Parameters:
-        ELBDNSName:
-          !GetAtt ELBStack.Outputs.ELBDNSName
-        CODEVERSION:
-          Ref: CODEVERSION
-        COMPONENT:
-          Ref: COMPONENT
-        ENV:
-          Ref: ENV
-        SERVICE:
-          Ref: SERVICE
-        HostedZone:
-          Ref: HostedZone
-        HostedZoneId:
-          Ref: HostedZoneId
+
 
 Outputs:
 

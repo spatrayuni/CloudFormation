@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Create
+
+Parameters:
+
+  CODEVERSION:
+    Description: CodeVersion
+    Type: String
+    Default: 1.2.16
+
+  COMPONENT:
+    Description: Environment
+    Type: String
+    Default: ws
+
+  ENV:
+    Description: Environment
+    Type: String
+    Default: qal
+
+  SERVICE:
+    Description: ServiceName
+    Type: String
+    Default: fdpdocv2
+
+  HostedZone:
+    Description: Provide the Hosted Zone Name
+    Type: String
+    Default: learn.intuit.net.
+
+  Choice:
+    Description: Provice Blue or Green
+    Type: String
+    Default: Blue
+
+Resources:
+  AliasRR:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      AliasTarget:
+        DNSName: !Ref Name
+        HostedZoneId: Z1H1FL5HABSF5
+        EvaluateTargetHealth: No
+      Name: 
+        !Join [".",[!Ref SERVICE, !Ref Choice, !Ref COMPONENT, !Ref ENV, !Ref HostedZone]]
+      Type: A
+      HostedZoneId: ZY4X5YO84M8G3

@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates EC2 with created IAM
+
+Parameters:
+
+  IAM:
+    Description: Provide the IAM Stack KeyName
+    Type: String
+    Default: "IAMRole1"
+
+Resources:
+  EC2:
+    Type: "AWS::EC2::Instance"
+    Properties: 
+      IamInstanceProfile: 
+        Fn::ImportValue: 
+          !Sub "${IAM}-InstanceProfile"
+      ImageId: ami-6f46da0f
+      InstanceType: t2.micro
+      KeyName: intuit_learning
+      SecurityGroupIds: 
+        - sg-c6f88bbd
+      SubnetId: subnet-3dd6975a

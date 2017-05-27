@@ -14,6 +14,18 @@ Parameters:
     Description: Provide Bastion Security Group
     Type: AWS::EC2::SecurityGroup::Id
 
+  CODEVERSION:
+    Description: CodeVersion
+    Type: String 
+
+  COMPONENT:
+    Description: Environment
+    Type: String
+
+  ENV:
+    Description: Environment
+    Type: String
+
   ELBSubnets:
     Description: The KeyName associated Instance
     Type: List<AWS::EC2::Subnet::Id>
@@ -21,7 +33,6 @@ Parameters:
   ELBCidrIp:
     Description: Provice a list of CidrIp ranges that are allowed for ELB
     Type: CommaDelimitedList
-    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})" 
 
   Endpoint:
     Description: Email address for Alarm Notification
@@ -30,6 +41,16 @@ Parameters:
   Hosttag:
     Description: Host Tag
     Type: String
+
+  HostedZone:
+    Description: Provide the Hosted Zone Name
+    Type: String
+    Default: learn.intuit.net.
+
+  HostedZoneId:
+    Description: Provide the Hosted Zone HostedZoneId
+    Type: AWS::Route53::HostedZone::Id
+    Default: Z148YSNYOMPNX9
 
   ImageId:
     Description: The AMIID for Instance
@@ -59,30 +80,13 @@ Parameters:
     Description: Scaling Adjustment for reduction
     Type: Number
 
-  VpcId:
-    Description: Provide Current VPC ID
-    Type: AWS::EC2::VPC::Id
-
   SERVICE:
     Description: ServiceName
     Type: String 
 
-  COMPONENT:
-    Description: Environment
-    Type: String
-
-  CODEVERSION:
-    Description: CodeVersion
-    Type: String 
-
-  ENV:
-    Description: Environment
-    Type: String
-
-# Coniditions Section
-
-Conditions: 
-  StackSelection: !Equals [Ref: COMPONENT, ws]
+  VpcId:
+    Description: Provide Current VPC ID
+    Type: AWS::EC2::VPC::Id
 
 # Resources Section
 
@@ -114,7 +118,6 @@ Resources:
 
   ELBStack:
     Type: AWS::CloudFormation::Stack
-    Condition: StackSelection
     Properties:
       TemplateURL: "https://s3-us-west-2.amazonaws.com/cf-templates-wqdcwpewx2ek-us-west-2/CF-Templates/ELB.template"
       TimeoutInMinutes : 5
@@ -134,7 +137,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: "https://s3-us-west-2.amazonaws.com/cf-templates-wqdcwpewx2ek-us-west-2/CF-Templates/AutoScaling.template"
-      TimeoutInMinutes: 10
+      TimeoutInMinutes: 15
       Parameters:
         InstanceSG:
           !GetAtt InstanceSecurityGroupStack.Outputs.InstanceSG
@@ -175,6 +178,27 @@ Resources:
           !GetAtt AutoScalingStack.Outputs.ScaleUpPolicy
         ScaleDownPolicy:
           !GetAtt AutoScalingStack.Outputs.ScaleDownPolicy
+
+  RecordSetCreationStack:
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: "https://s3-us-west-2.amazonaws.com/psd26/Route53_RecordSet.template"
+      TimeoutInMinutes: 5
+      Parameters:
+        ELBDNS:
+          !GetAtt ELBStack.Outputs.PublicELB
+        CODEVERSION:
+          Ref: CODEVERSION
+        COMPONENT:
+          Ref: COMPONENT
+        ENV:
+          Ref: ENV
+        SERVICE:
+          Ref: SERVICE
+        HostedZone:
+          Ref: HostedZone
+        HostedZoneId:
+          Ref: HostedZoneId
 
 Outputs:
 
@@ -227,6 +251,11 @@ Outputs:
     Description: Scale down Policy
     Value:
       !GetAtt AutoScalingStack.Outputs.ScaleDownPolicy
+
+  RecordSetInfo:
+    Description: New RecordSet created
+    Value:
+      !GetAtt RecordSetCreationStack.Outputs.RecordSetName
 
 
 
