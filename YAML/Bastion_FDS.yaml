@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Bastion security group
+Outputs:
+  BastionEC2SecurityGroup:
+    Description: ID of the security group allowing SSH access from the bastion (deprecated)
+    Value:
+      Fn::GetAtt:
+      - BastionEC2SecurityGroup
+      - GroupId
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-BastionEC2SecurityGroup
+  BastionSecurityGroup:
+    Description: ID of the bastion security group
+    Value:
+      Fn::GetAtt:
+      - BastionSecurityGroupOip
+      - Outputs.SecurityGroupId
+Parameters:
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  CookbookBucketName:
+    Description: Name of S3 bucket with CF substacks
+    Type: String
+  Whitelist1a:
+    Description: Whitelist1a - proxy EIP from ficds account
+    Type: String
+  Whitelist1b:
+    Description: Whitelist1b - proxy EIP from ficds account
+    Type: String
+Resources:
+  BastionEC2SecurityGroup:
+    Properties:
+      GroupDescription: Allow TCP:22 from bastion
+      SecurityGroupIngress:
+      - FromPort: '22'
+        IpProtocol: tcp
+        SourceSecurityGroupId:
+          Fn::GetAtt:
+            - BastionSecurityGroupOip
+            - Outputs.SecurityGroupId
+        ToPort: '22'
+      - FromPort: '6556'
+        IpProtocol: tcp
+        SourceSecurityGroupId:
+          Fn::GetAtt:
+            - BastionSecurityGroupOip
+            - Outputs.SecurityGroupId
+        ToPort: '6556'
+      VpcId:
+        Ref: VpcId
+    Type: AWS::EC2::SecurityGroup
+  BastionSecurityGroupFICDS:
+    Properties:
+      GroupDescription: Allow TCP:22 from FICDS account
+      SecurityGroupIngress:
+      - CidrIp:
+          Ref: Whitelist1a
+        FromPort: '22'
+        IpProtocol: tcp
+        ToPort: '22'
+      - CidrIp:
+          Ref: Whitelist1b
+        FromPort: '22'
+        IpProtocol: tcp
+        ToPort: '22'
+      VpcId:
+        Ref: VpcId
+    Type: AWS::EC2::SecurityGroup
+  BastionSecurityGroupOip:
+    Metadata:
+      Comment: Allow TCP:22 from Intuit IPs, Build from intuit-cidr-ingress.yml
+    Properties:
+      Parameters:
+        Port: 22
+        VpcId:
+          Ref: VpcId
+      # didn't work, no access
+      #TemplateURL: http://patterns-artifacts-release.s3-website-us-west-2.amazonaws.com/ingress-sg-v1.0.0/intuit-cidr-ingress.yml
+      # works 2017/03/30
+      #TemplateURL: https://oip-5e184b5b-9021-4e11-9af7-a93a1f8a2f00.s3.amazonaws.com/ingress-sg-v1.0.0/intuit-cidr-ingress.yml
+      TemplateURL:
+        Fn::Join:
+        - ''
+        - - Ref: CookbookBucketName
+          - /ingress-sg-v1.0.0/intuit-cidr-ingress.yml
+    Type: AWS::CloudFormation::Stack

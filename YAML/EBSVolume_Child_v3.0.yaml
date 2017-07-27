@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Description : "Single EC2 instance template"
+
+Parameters:
+  StackName:
+    Description: Provice the Stack StackName
+    Type: String
+
+Resources:
+  SQLEBSVolume:
+    Type: "AWS::EC2::Volume"
+    Properties:
+      AvailabilityZone: 
+        Fn::ImportValue:
+          !Sub ${StackName}-EC2AZ
+      Encrypted: true
+      Iops: 1000
+      Size: 100
+      Tags:
+        - Key: Name
+          Value: SQLEBSVolume
+      VolumeType: io1
+    DeletionPolicy: "Snapshot"
+
+Outputs:
+  SBGEBSVolume:
+    Description: SQL EC2 Instance created
+    Value:
+      Ref: SQLEBSVolume
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-SQLEBSVolume
+
+

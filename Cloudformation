@@ -1,0 +1,90 @@
+Cloudformation
+It is free service
+Create or Setup, Manage AWS resource easily
+Versioning and rollback are easy.
+Blue/Green infrastructure - Passive/Active concept.
+Repeatable deployment and quick deployment.
+
+Template sections:-
+
+FormatVersion
+Description
+Parameters
+Resources
+Metadata
+Mappings
+Conditions
+Outputs
+
+
+String ""
+List [] - "List<AWS::EC2::Subnet::Id>""
+Reference or Intrinsic function result {}
+! - calling functions.
+
+
+Resource Attributes
+
+CreatePolicy - Associate the CreationPolicy attribute with a resource to prevent its status from reaching create complete until AWS CloudFormation receives a specified number of success signals or the timeout period is exceeded.
+DeletePolicy - With the DeletionPolicy attribute you can preserve or (in some cases) backup a resource when its stack is deleted.
+DependsOn
+Metadata
+UpdatePolicy - how AWS CloudFormation handles updates to the AWS::AutoScaling::AutoScalingGroup resource
+
+Intrinsic function
+
+Fn::Base64 
+Fn::FindInMap
+Fn::GetAtt
+Fn::GetAZs - returns as Array
+Fn::Join - demlinter based join the 
+Fn::Select - Select by index from list 
+Ref - reference to value of parameter or resource.
+
+
+Conditional Function
+
+Fn::If
+Fn::Not
+Fn::And
+Fn::Or
+Fn::Equals
+
+
+Pseduo Parameters.
+
+no need to declare.
+AWS::AccountId
+AWS::NotificationARNs
+AWS::StackId
+AWS::Region 
+AWS::NoValue
+AWS::Stackname
+
+
+CloufdForm helper script. it is written in python.
+
+cfn-init - reads template metadata from the AWS::CloudFormation::Init key and acts. If your template calls the cfn-init script, the script looks for resource metadata rooted in the AWS::CloudFormation::Init metadata key
+Fetch and parse metadata from CloudFormation
+Install packages
+Write files to disk
+Enable/disable and start/stop services
+cfn-signal - To signal a resource, you can use the cfn-signal helper script. signals AWS CloudFormation to indicate whether Amazon EC2 instances have been successfully created or updated.
+
+cfn-hup - it is a daemon that detects changes in resource metadata and runs user-specified actions when a change is detected.
+cfn-get-metadata - to fetch a metadata block from CloudFormation and print it to standard out.
+
+Configsets - To create more than one config key and to have cfn-init process them in a specific order, create a configset that contains the config keys in the desired order. 
+
+Template sections:-
+
+FormatVersion
+Description
+Parameters
+Resources
+Resource types
+Metadata
+Mappings
+Conditions
+Outputs
+

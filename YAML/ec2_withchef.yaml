@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a full stack for DocumentService Consumer (EC2 AutoScalingGroup ELB)
+## Metadata section for ct template.
+Metadata:
+  Name: DocumentService
+  Version: 1.1.2
+## Parameters section for ct template.
+Parameters:
+  SecurityGroups:
+    Description: Comma-separated list of IDs of the security group for the App Tier.
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  CASEBS:
+    Description: EBS Volume ID
+    Type: String  
+  CassandraRole:
+    Description: Chef runlists for the nodes.
+    Type: CommaDelimitedList
+  ChefEnvironment:
+    Description: Chef environment.
+    Type: String
+  ChefServerURL:
+    Description: Chef-server URL (including organization).
+    Type: String
+  EumcScriptPath:
+    Description: Script to install eumc.
+    Type: String
+  Hosttag:
+    Description: Host Tag
+    Type: String
+  InstanceProfile:
+    Description: Provide the IAM Stack KeyName
+    Type: String
+  AmiId:
+    Description: The AMIID for Instance
+    Type: AWS::EC2::Image::Id
+  InstanceType:
+    Description: The InstanceType of Instance
+    Type: String
+  KeyName:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::KeyPair::KeyName
+  MinSize:
+    Description: MinSize of Instance
+    Type: Number
+  MaxSize:
+    Description: MaxSize of Instance
+    Type: Number
+  EgressProxyHost:
+    Description: Egress proxy host
+    Type: String
+  EgressProxyPort:
+    Description: Egress proxy port
+    Type: String
+  ResourceName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9-_]*'
+    Default: DocumentServer
+    Description: The Logical Resource Name - commonly set by parent stack
+    MaxLength: '128'
+    MinLength: '1'
+    Type: String
+  CASENI:
+    Description: CASENI
+    Type: String
+    Default: String
+  SecretsRPM:
+    Description: URL to download Secrets-CLI rpm
+    Type: String
+  SecretsS3:
+    Description: S3 bucket storing Secrets CLI
+    Type: String
+  SubnetId:
+    Description: List of VPCZoneIdentifier
+    Type: List<String>
+  VpcId:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::VPC::Id
+## Resources section for cf template.
+Resources:
+### AutoScaling LaunchConfiguration Resources
+  fdsautoscalingLaunchConfiguration:
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          files:
+            /etc/chef/client.rb:
+              content:
+                Fn::Join:
+                - ''
+                - - chef_server_url "
+                  - Ref: ChefServerURL
+                  - '"
+                    '
+                  - 'log_level        :info
+                    '
+                  - 'log_location     STDOUT
+                    '
+                  - 'validation_client_name ''fds-qa-validator''
+                    '
+                  - 'validation_key ''/etc/chef/fds-qa-validator.pem''
+                    '
+                  - http_proxy "http://
+                  - Ref: EgressProxyHost
+                  - ':'
+                  - Ref: EgressProxyPort
+                  - '"
+                    '
+                  - https_proxy "http://
+                  - Ref: EgressProxyHost
+                  - ':'
+                  - Ref: EgressProxyPort
+                  - '"
+                    '
+                  - 'no_proxy "169.254.169.254,127.0.0.1,.intuit.net"
+                    '
+                  - 'INSTANCEID=`(curl -s http://169.254.169.254/latest/meta-data/instance-id
+                    | sed ''s/^i-//'')`
+                    '
+                  - node_name "
+                  - Ref: ResourceName
+                  - '-#{INSTANCEID}"
+                    '
+              group: root
+              mode: '000644'
+              owner: root
+            /etc/chef/first-boot.json:
+              content:
+                Fn::Join:
+                - ''
+                - - '{
+                    '
+                  - '  "run_list": [
+                    '
+                  - '    "role[fds_aws]",
+                    '
+                  - '    "role['
+                  - Ref: CassandraRole
+                  - ']"
+                    '
+                  - '  ]
+                    '
+                  - '}'
+              group: root
+              mode: '000644'
+              owner: root
+            /etc/profile.d/ec2-egress-proxy.sh:
+              content:
+                Fn::Join:
+                - ''
+                - - export http_proxy=http://
+                  - Ref: EgressProxyHost
+                  - ':'
+                  - Ref: EgressProxyPort
+                  - '
+                    '
+                  - export https_proxy=http://
+                  - Ref: EgressProxyHost
+                  - ':'
+                  - Ref: EgressProxyPort
+                  - '
+                    '
+                  - 'export no_proxy=169.254.169.254,127.0.0.1,localhost
+                    '
+              group: root
+              mode: '000644'
+              owner: root
+          packages:
+            yum:
+              bind-utils: []
+              curl: []
+              lvm2: []
+              ntp: []
+              rsync: []
+              screen: []
+              telnet: []
+              wget: []
+      Comment1: Configure the bootstrap helpers to install CAS servers
+    Properties:
+      IamInstanceProfile:
+        Ref: InstanceProfile
+      ImageId:
+        Ref: AmiId
+      InstanceType:
+        Ref: InstanceType
+      EbsOptimized: 'true'
+      KeyName:
+        Ref: KeyName
+      SecurityGroups:
+        Ref: SecurityGroups
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -v
+            export http_proxy=http://${EgressProxyHost}:${EgressProxyPort}
+            export https_proxy=http://${EgressProxyHost}:${EgressProxyPort}
+            export no_proxy=169.254.169.254,127.0.0.1,localhost
+            export PATH=$PATH:/opt/aws/bin
+            cfn-init -v -s ${AWS::StackName} -r CASServerLaunchConfig --region ${AWS::Region}
+            #/etc/chef/asg-attach-eni.sh
+            my_instance_id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+            if [ "${CASENI}" != "" ]; then
+              echo "preserve_hostname: true" >> /etc/cloud/cloud.cfg
+            fi
+            echo "aws ec2 attach-volume --volume-id ${CASEBS} --instance-id $my_instance_id --device /dev/xvdh --region ${AWS::Region}" > /etc/default/mount_lvm
+            chmod +x /etc/default/mount_lvm
+            /etc/default/mount_lvm
+            #do some chef things before the cfn-init due to race issues
+            /bin/mkdir -p /etc/chef
+            /bin/mkdir -p /var/lib/chef
+            /bin/mkdir -p /var/log/chef
+            /bin/mkdir -p /var/cache/chef
+            /usr/sbin/groupadd chef -r
+            /usr/sbin/useradd chef -r -s /bin/sh -d /var/lib/chef -g chef
+            #install eumc
+            aws s3 cp ${EumcScriptPath} /tmp/eumc.sh
+            chmod 755 /tmp/eumc.sh
+            /tmp/eumc.sh
+            #Download rpm from s3
+            aws s3 cp ${SecretsRPM} /var/cache/chef/
+            rpm -Uvh /var/cache/chef/secrets-cli-*.rpm
+            #Download validator.pem s3
+            /usr/local/bin/secrets get --region us-west-2 --s3-bucket ${SecretsS3} --secret-name common/fds-qa-validator.pem --output /etc/chef/fds-qa-validator.pem
+            #install chef
+            if grep -q 'release 7' /etc/redhat-release; then
+              rpm -Uvh https://opscode-omnibus-packages.s3.amazonaws.com/el/7/x86_64/chef-12.4.3-1.el7.x86_64.rpm
+            else
+              rpm -Uvh https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chef-12.4.3-1.el6.x86_64.rpm
+            fi
+            chown -R chef /etc/chef/*
+            echo 'chef-client -j /etc/chef/first-boot.json -E ${ChefEnvironment} 2>&1 | tee -a /var/log/chef-install.log' > /etc/chef/first.sh
+            chmod 755 /etc/chef/first.sh
+            /etc/chef/first.sh
+            #tune audit.rules - CFAO-5536; cleanup audit.log so the installation logs of every single file doesn't get send to splunk
+            #sed -i 's,k delete$,k delete -F dir!=/opt/omd/sites,' /etc/audit/rules.d/audit.rules
+            #rm -f /var/log/audit/audit.log*
+            # If all went well, signal success
+    Type: AWS::AutoScaling::LaunchConfiguration
+  WaitCondition:
+    DependsOn: fdsautoscalingLaunchConfiguration
+    Properties:
+      Handle:
+        Ref: WaitHandle
+      Timeout: '900'
+    Type: AWS::CloudFormation::WaitCondition
+  WaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+### AutoScaling Group Resources
+  fdsautoscaling:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        Ref: SubnetId
+      MinSize:
+        Ref: MinSize
+      MaxSize:
+        Ref: MaxSize
+      LaunchConfigurationName:
+        Ref: fdsautoscalingLaunchConfiguration
+      Tags:
+      - Key: Name
+        Value:
+          Ref: Hosttag
+        PropagateAtLaunch: 'true'
+## Output section for ct template.
+Outputs:
+  fdsautoscalingLaunchConfiguration:
+     Description: fdsautoscalingLaunchConfiguration for stack
+     Value: !Ref fdsautoscalingLaunchConfiguration
+  fdsautoscaling:
+     Description: fdsautoscalingLaunchConfiguration for stack
+     Value: !Ref fdsautoscalingLaunchConfiguration

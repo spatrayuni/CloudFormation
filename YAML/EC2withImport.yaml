@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackName:
+    Description: Provice the Stack StackName
+    Type: String
+
+
+Resources:
+  EC2InstancewithImport:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: "ami-6f46da0f"
+      SecurityGroupIds:
+        - Fn::ImportValue:
+            !Sub "${StackName}-SecurityGroupsInstanceELBAPIGateway"
+        - Fn::ImportValue:
+            !Sub "${StackName}-SecurityGroupsInstanceELBIntuitProvider"
+      SubnetId: "subnet-4ea75315"
+      KeyName: intuit_learning
+      InstanceType: t2.micro

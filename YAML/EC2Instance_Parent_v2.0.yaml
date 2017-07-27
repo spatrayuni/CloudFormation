@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Description : "Single EC2 instance template"
+
+Parameters:
+  AZ:
+    Description: Provide the AZ
+    Type: String
+
+  IAM:
+    Description: Provide the IAM Instance profile
+    Type: String
+
+  ImageId:
+    Description: The AMIID for Instance
+    Type: AWS::EC2::Image::Id
+
+  InstanceType:
+    Description: The InstanceType of Instance
+    Type: String
+
+  KeyName:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+  Hosttag:
+    Description: Host Tag
+    Type: String
+
+  SecurityGroupIds:
+    Description: SecurityGroupIds that need to be included
+    Type: List<AWS::EC2::SecurityGroup::Id>
+
+  SubnetId: 
+    Description: Subnet ID in which the Instance need to be launched
+    Type: AWS::EC2::Subnet::Id
+
+
+Resources:
+  SQLEC2:
+    Type: "AWS::EC2::Instance"
+    Properties: 
+      AvailabilityZone: !Ref AZ
+      IamInstanceProfile: !Ref IAM
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroupIds: !Ref SecurityGroupIds
+      SubnetId: !Ref SubnetId
+      Tags: 
+        - Key: Name
+          Value:
+            Ref: Hosttag
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            VolumeSize: 30
+
+Outputs:
+  EC2:
+    Description: SQL EC2 Instance created
+    Value:
+      Ref: SQLEC2
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-SQLEC2

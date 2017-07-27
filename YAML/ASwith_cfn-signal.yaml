@@ -1,0 +1,37 @@
+WSTemplateFormatVersion : 2010-09-09
+
+Description: Autoscaling with Create CreationPolicy with cfn-signal
+
+Resources:
+  ASLG:
+    Type: "AWS::AutoScaling::LaunchConfiguration"
+    Properties:
+      ImageId: ami-6f46da0f
+      InstanceType: t2.micro
+      KeyName: intuit_learning
+      SecurityGroups:
+        - sg-c6f88bbd
+        - sg-d0e794ab
+      UserData: 
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            yum update -y aws-cfn-bootstrap
+            cfn-signal --stack=${AWS::StackName} --resource=ASAG --region=${AWS::Region}
+
+  ASAG:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      LaunchConfigurationName: !Ref ASLG
+      MaxSize: '2'
+      MinSize: '2'
+      VPCZoneIdentifier:
+        - subnet-81d796e6
+    CreationPolicy:
+      AutoScalingCreationPolicy:
+        MinSuccessfulInstancesPercent: 30
+      ResourceSignal:
+        Count: '2'
+        Timeout: PT5M
+
+

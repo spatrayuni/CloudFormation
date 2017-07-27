@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Description : "Single EC2 instance template"
+
+Parameters:
+  EBSStackName:
+    Description: Provice the Stack StackName
+    Type: String
+
+  IAM:
+    Description: Provide the IAM Instance profile
+    Type: String
+
+  ImageId:
+    Description: The AMIID for Instance
+    Type: AWS::EC2::Image::Id
+
+  InstanceType:
+    Description: The InstanceType of Instance
+    Type: String
+
+  KeyName:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+  Hosttag:
+    Description: Host Tag
+    Type: String
+
+  SecurityGroupIds:
+    Description: SecurityGroupIds that need to be included
+    Type: List<AWS::EC2::SecurityGroup::Id>
+
+
+  VPCId:
+    Description: Provide the VPC Id
+    Type: String
+
+
+Resources:
+  SQLEC2:
+    Type: "AWS::EC2::Instance"
+    Properties: 
+      IamInstanceProfile: !Ref IAM
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroupIds: !Ref SecurityGroupIds
+      SubnetId:
+        !Select [0, !Split [",", !ImportValue "vpc-a23f07c5:replication-subnet:ids"]]
+#        !Select [0, !Split [";", Fn::ImportValue: !Sub "${VPCId}:replication-subnet:ids"]]
+
+      Tags: 
+        - Key: Name
+          Value:
+            Ref: Hosttag
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            VolumeSize: 30
+
+  SQLEBSAttach:
+    Type: "AWS::EC2::VolumeAttachment"
+    Properties:
+      Device: /dev/xvdz
+      InstanceId: !Ref SQLEC2
+      VolumeId:
+        Fn::ImportValue:
+          !Sub ${EBSStackName}-SQLEBSVolume
+
+Outputs:
+  EC2:
+    Description: SQL EC2 Instance created
+    Value:
+      Ref: SQLEC2
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-SQLEC2
+
+  EC2AZ:
+    Description: SQL EC2 Instance created
+    Value:
+      !GetAtt SQLEC2.AvailabilityZone
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-EC2AZ

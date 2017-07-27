@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Description : "Single EC2 instance template"
+
+Parameters:
+  EC2StackName:
+    Description: Provice the Stack StackName
+    Type: String
+
+  EBSStackName:
+    Description: Provice the Stack StackName
+    Type: String
+
+Resources:
+  SQLEBSAttach:
+    Type: "AWS::EC2::VolumeAttachment"
+    Properties:
+      Device: /dev/xvdz
+      InstanceId: 
+        Fn::ImportValue:
+          !Sub ${EC2StackName}-SQLEC2
+      VolumeId:
+        Fn::ImportValue:
+          !Sub ${EBSStackName}-SQLEBSVolume

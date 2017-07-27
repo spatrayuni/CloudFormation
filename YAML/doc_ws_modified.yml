@@ -1,0 +1,401 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: Creates a full stack for FDP DocumentService (EC2 AutoScalingGroup ELB)
+
+## Metadata section for cf template.
+Metadata:
+  Name: DocumentService
+  Version: 1.1.2
+
+## Parameters section for cf template.
+Parameters:
+
+  AppEC2SecurityGroup:
+    Description: Comma-separated list of IDs of the security group for the App Tier.
+    Type: List<String>
+
+  ChefRole:
+    Description: Chef runlists for the nodes.
+    Type: CommaDelimitedList
+
+  ChefEnvironment:
+    Description: Chef environment.
+    Type: String
+
+  ChefServerURL:
+    Description: Chef-server URL (including organization).
+    Type: String
+
+  ENV:
+    Description: Environment
+    Type: String
+
+  EbsVolumeSize:
+    Description: Size of EBS Volume.
+    Type: Number
+
+  EumcScriptPath:
+    Description: Script to install eumc.
+    Type: String
+
+  Hosttag:
+    Description: Host Tag
+    Type: String
+
+  IAM:
+    Description: Provide the IAM Stack KeyName
+    Type: String
+
+  ImageId:
+    Description: The AMIID for Instance
+    Type: AWS::EC2::Image::Id
+
+  InstanceType:
+    Description: The InstanceType of Instance
+    Type: String
+
+  KeyName:
+    Description: The KeyName associated Instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+  MinSize:
+    Description: MinSize of Instance
+    Type: Number
+
+  MaxSize:
+    Description: MaxSize of Instance
+    Type: Number
+
+  ResourceName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9-_]*'
+    Description: The Logical Resource Name - commonly set by parent stack
+    MaxLength: '128'
+    MinLength: '1'
+    Type: String
+
+  SERVICE:
+    Description: ServiceName
+    Type: String 
+
+  SecretsRPM:
+    Description: URL to download Secrets-CLI rpm
+    Type: String
+
+  SecretsS3:
+    Description: S3 bucket storing Secrets CLI
+    Type: String
+
+  VPCZoneIdentifier:
+    Description: List of VPCZoneIdentifier
+    Type: List<String>
+
+
+## Resources section for cf template.
+
+Resources:
+
+### AutoScaling LaunchConfiguration Resources
+
+  fdsautoscalingLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          files:
+            /etc/chef/client.rb:
+              content:
+                Fn::Join:
+                - ''
+                - - chef_server_url "
+                  - Ref: ChefServerURL
+                  - '"
+
+                    '
+                  - 'log_level        :info
+
+                    '
+                  - 'log_location     STDOUT
+
+                    '
+                  - 'validation_client_name ''fds-qa-validator''
+
+                    '
+                  - 'validation_key ''/etc/chef/fds-qa-validator.pem''
+
+                    '
+                  - 'INSTANCEID=`(curl -s http://169.254.169.254/latest/meta-data/instance-id
+                    | sed ''s/^i-//'')`.chomp
+
+                    '
+                  - 'AZ=`(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone
+                    | awk ''{print substr($0, length($0), 1)}'')`.chomp
+
+                    '
+                  - node_name "
+                  - Ref: ResourceName
+                  - '#{AZ}-#{INSTANCEID}"
+
+                    '
+              group: root
+              mode: '000644'
+              owner: chef
+            /etc/chef/first-boot.json:
+              content:
+                Fn::Join:
+                - ''
+                - - '{
+
+                    '
+                  - '  "run_list": [
+
+                    '
+                  - '    "'
+                  - Fn::Join:
+                    - '","'
+                    - Ref: ChefRole
+                  - '"
+
+                    '
+                  - '  ]
+
+                    '
+                  - '}'
+              group: root
+              mode: '000644'
+              owner: chef
+          packages:
+            yum:
+              curl: []
+              lvm2: []
+              ntp: []
+              rsync: []
+              screen: []
+              telnet: []
+              wget: []
+
+      Comment1: Configure the bootstrap helpers to install Categorization servers
+
+
+    Properties:
+      AssociatePublicIpAddress: 'false'
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvdz
+        Ebs:
+          VolumeSize:
+            Ref: EbsVolumeSize
+          VolumeType: gp2
+          Encrypted: true
+      - DeviceName: "/dev/sda1"
+        Ebs:
+          VolumeSize: 30
+      IamInstanceProfile: !Ref IAM
+      ImageId:
+        Ref: ImageId
+
+      KeyName:
+        Ref: KeyName
+
+      SecurityGroups:
+        Ref: AppEC2SecurityGroup
+
+      InstanceType:
+        Ref: InstanceType
+
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+          - ''
+          - - '#!/bin/bash -v
+
+              '
+            - 'function error_exit
+
+              '
+            - '{
+
+              '
+            - '  cfn-signal -e 1 -r "$1" '''
+            - Ref: WaitHandle
+            - '''
+
+              '
+            - '  exit 1
+
+              '
+            - '}
+
+              '
+            - 'SHORTNAME=`(curl -s http://169.254.169.254/latest/meta-data/local-hostname)`
+
+              '
+            - 'LONGNAME="$SHORTNAME.ec2.internal"
+
+              '
+            - 'PRIVATE_IPV4=`(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)`
+
+              '
+            - 'export HOME=/root
+
+              '
+            - '#do some chef things before the cfn-init due to race issues
+
+              '
+            - '/bin/mkdir -p /etc/chef
+
+              '
+            - '/bin/mkdir -p /var/lib/chef
+
+              '
+            - '/bin/mkdir -p /var/log/chef
+
+              '
+            - '/bin/mkdir -p /var/cache/chef
+
+              '
+            - '/usr/sbin/groupadd chef -r
+
+              '
+            - '/usr/sbin/useradd chef -r -s /bin/sh -d /var/lib/chef -g chef
+
+              '
+            - 'export PATH=$PATH:/opt/aws/bin
+
+              '
+            - 'cfn-init '
+            - '    -v -s '
+            - Ref: AWS::StackName
+            - ' -r fdsautoscalingLaunchConfiguration '
+            - '         --region     '
+            - Ref: AWS::Region
+            - ' || error_exit ''Failed to run cfn-init''
+
+              '
+            - '#Download rpm from s3
+
+              '
+            - 'aws s3 cp '
+            - Ref: SecretsRPM
+            - ' /var/cache/chef/ >> /var/log/chef-install.log 2>&1 || error_exit ''Failed
+              to get secrets cli rpm.''
+
+              '
+            - 'rpm -Uvh /var/cache/chef/secrets-cli-*.rpm >> /var/log/chef-install.log
+              2>&1 || error_exit ''Failed to install secrets cli rpm.''
+
+              '
+            - '#Download validator.pem from secrets-cli
+
+              '
+            - '/usr/local/bin/secrets get --region us-west-2 --s3-bucket '
+            - Ref: SecretsS3
+            - ' --secret-name common/fds-qa-validator.pem --output /etc/chef/fds-qa-validator.pem
+              >> /var/log/chef-install.log 2>&1 || error_exit ''Failed to get validator.pem
+              from secrets-cli.''
+
+              '
+            - '# If all went well, signal success
+
+              '
+            - cfn-signal -e $? -r 'DocumentService server configuration' '
+            - Ref: WaitHandle
+            - '''
+
+              '
+            - '#install chef
+
+              '
+            - 'if grep -q ''release 7'' /etc/redhat-release; then
+
+              '
+            - '  rpm -Uvh https://opscode-omnibus-packages.s3.amazonaws.com/el/7/x86_64/chef-12.4.3-1.el7.x86_64.rpm
+              >> /var/log/chef-install.log 2>&1 || error_exit ''Failed to install
+              chef.''
+
+              '
+            - 'else
+
+              '
+            - '  rpm -Uvh https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chef-12.4.3-1.el6.x86_64.rpm
+              >> /var/log/chef-install.log 2>&1 || error_exit ''Failed to install
+              chef.''
+
+              '
+            - 'fi
+
+              '
+            - 'chown -R chef /etc/chef/*
+
+              '
+            - 'echo ''chef-client -j /etc/chef/first-boot.json -E '
+            - Ref: ChefEnvironment
+            - ' 2>&1 | tee -a /var/log/chef-install.log'' > /etc/chef/first.sh
+
+              '
+            - 'chmod 755 /etc/chef/first.sh
+
+              '
+            - '/etc/chef/first.sh
+
+              '
+            - 'sleep 60s
+
+              '
+            - 'rm -rf /etc/profile.d/ec2-egress-proxy.sh
+
+              '
+            - '/sbin/service tomcat start
+              '
+            - '# If all went well, signal success
+
+              '
+            - cfn-signal -e $? -r 'FDS server configuration' '
+            - Ref: WaitHandle
+            - '''
+
+              '
+    Type: AWS::AutoScaling::LaunchConfiguration
+  WaitCondition:
+    DependsOn: fdsautoscalingLaunchConfiguration
+    Properties:
+      Handle:
+        Ref: WaitHandle
+      Timeout: '900'
+    Type: AWS::CloudFormation::WaitCondition
+  WaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+### AutoScaling Group Resources
+
+  fdsautoscaling:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        Ref: VPCZoneIdentifier
+      MinSize:
+        Ref: MinSize
+      MaxSize:
+        Ref: MaxSize
+      LaunchConfigurationName:
+        Ref: fdsautoscalingLaunchConfiguration
+      Tags:
+      - Key: Name
+        Value:
+          Ref: Hosttag
+        PropagateAtLaunch: 'true'
+
+
+## Output section for ct template.
+
+Outputs:
+
+  fdspublicelb:
+     Description: fdspublicelb for stack
+     Value: !Ref fdspublicelb
+
+  fdsautoscalingLaunchConfiguration:
+     Description: fdsautoscalingLaunchConfiguration for stack
+     Value: !Ref fdsautoscalingLaunchConfiguration
+
+  fdsautoscaling:
+     Description: fdsautoscalingLaunchConfiguration for stack
+     Value: !Ref fdsautoscalingLaunchConfiguration

@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack security groups
+Outputs:
+  AppEC2SecurityGroup:
+    Description: ID of the security group for app ec2 tier
+    Value:
+      Fn::GetAtt:
+      - AppEC2SecurityGroup
+      - GroupId
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-AppEC2SecurityGroup
+  AppELBSecurityGroup:
+    Description: ID of the security group for app elb tier
+    Value:
+      Fn::GetAtt:
+      - AppELBSecurityGroup
+      - GroupId
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-AppELBSecurityGroup
+  RDSEC2SecurityGroup:
+    Description: ID of the RDS Security group for the app elb tier
+    Value:
+      Fn::GetAtt:
+      - RDSEC2SecurityGroup
+      - GroupId
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-RDSEC2SecurityGroup   
+Parameters:
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+Resources:
+  AppEC2SecurityGroup:
+    Properties:
+      GroupDescription: App Tier SG
+      SecurityGroupIngress:
+      - FromPort: '8443'
+        IpProtocol: tcp
+        SourceSecurityGroupId:
+          Ref: AppELBSecurityGroup
+        ToPort: '8443'
+      VpcId:
+        Ref: VpcId
+    Type: AWS::EC2::SecurityGroup
+  AppELBSecurityGroup:
+    Properties:
+      GroupDescription: App ELB Tier SG
+      VpcId:
+        Ref: VpcId
+    Type: AWS::EC2::SecurityGroup
+  RDSEC2SecurityGroup:
+    Properties:
+      GroupDescription: RDS Tier SG
+      SecurityGroupIngress:
+      - FromPort: '3306'
+        IpProtocol: tcp
+        SourceSecurityGroupId:
+          Ref: AppEC2SecurityGroup
+        ToPort: '3306'
+      VpcId:
+        Ref: VpcId
+    Type: AWS::EC2::SecurityGroup

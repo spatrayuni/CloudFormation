@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Create Number of EC2 instances with Bastion SG and Instance CIDR SG
+
+Parameters:
+
+  Keyname:
+    Description: Provide the Key Name
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: "intuit_learning"
+
+  AMI:
+    Description: Name of the Image ID
+    Type: AWS::EC2::Image::Id
+    Default: "ami-6f46da0f"
+
+  InstanceNo:
+    Description: Provide the number of instances to be launched
+    Type: Number
+    Default: 1
+
+  InstanceType:
+    Description: Provide the InstanceType
+    Type: String
+    Default: t2.micro
+
+  ELBSubnetType:
+    Description: ELBSubnetType
+    Type: String
+    Default: "Ingress"
+
+  EC2SubnetType:
+    Description: EC2SubnetType
+    Type: String
+    Default: "Private"
+
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+
+  StackName:
+    Description: Provice the Stack StackName
+    Type: String
+    Default: "SGswithExports"
+
+  Port:
+    Description: Port
+    Type: Number
+    Default: "22"
+  
+
+Resources:
+
+  ASLG:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: false
+      BlockDeviceMappings: 
+      - DeviceName: "/dev/sda1"
+        Ebs: 
+          VolumeSize: 10
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref Keyname
+      SecurityGroups: 
+        - Fn::ImportValue:
+            !Sub "${StackName}-SecurityGroupsInstanceELBAPIGateway"
+        - Fn::ImportValue:
+            !Sub "${StackName}-SecurityGroupsInstanceELBIntuitProvider"
+
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      DesiredCapacity: !Ref InstanceNo
+      LaunchConfigurationName: !Ref ASLG
+      MaxSize: !Ref InstanceNo
+      MinSize: !Ref InstanceNo
+      Tags:
+        - Key: "Name"
+          Value: "Chef"
+          PropagateAtLaunch: true
+      VPCZoneIdentifier: !Split
+        - ","
+        - Fn::ImportValue:
+            !Sub ${VpcId}:private-subnet:ids
+
+  PublicELB:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      ConnectionDrainingPolicy:
+        Enabled: true
+        Timeout: 300
+      ConnectionSettings:
+        IdleTimeout: 120
+      CrossZone: true
+      HealthCheck:
+        HealthyThreshold: 2
+        Interval: 60
+        Target: HTTP:80/index.html
+        Timeout: 30
+        UnhealthyThreshold: 2
+      LoadBalancerName: PublicELB
+      Listeners:
+      - InstancePort: '80'
+        InstanceProtocol: TCP
+        LoadBalancerPort: '80'
+        Protocol: TCP
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub "${StackName}-SecurityGroupsInstanceELBAPIGateway"
+        - Fn::ImportValue:
+            !Sub "${StackName}-SecurityGroupsInstanceELBIntuitProvider"
+      Subnets: !Split
+        - ","
+        - Fn::ImportValue:
+            !Sub ${VpcId}:ingress-subnet:ids

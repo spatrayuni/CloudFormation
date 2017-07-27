@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Description: Autoscaling with Create CreationPolicy
+
+Resources:
+  ASLG1:
+    Type: "AWS::AutoScaling::LaunchConfiguration"
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          Test : 
+            - "Install"
+            - "Configure"
+        Install:
+          packages:
+            yum:
+              curl: []
+              lvm2: []
+              ntp: []
+              rsync: []
+              screen: []
+              telnet: []
+              wget: []
+              httpd: []
+        Configure:
+          files:
+            /var/www/html/index.html:
+              content: !Join
+                - ''
+                - - '<h1>My Name is Santhosh Deepu Patrayuni.</h1>'
+              mode: '0755'
+              owner: root
+              group: root
+          services: 
+            sysvinit: 
+              httpd: 
+                enabled: "true"
+                ensureRunning: "true"
+                files: 
+                  - "/etc/httpd/conf/httpd.conf"
+                sources: 
+                  - "/var/www/html"
+    Properties:
+      ImageId: ami-6f46da0f
+      InstanceType: t2.micro
+      KeyName: intuit_learning
+      SecurityGroups:
+        - sg-c6f88bbd
+        - sg-d0e794ab
+        - !Ref ELBtoEC2Ingress
+      UserData: 
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            yum update -y aws-cfn-bootstrap
+            cfn-init -v --stack=${AWS::StackName} --resource=ASLG1 --configsets=Test --region=${AWS::Region}
+            cfn-signal --stack=${AWS::StackName} --resource=ASAG1 --region=${AWS::Region}
+
+  ASAG1:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      LaunchConfigurationName: !Ref ASLG1
+      LoadBalancerNames: 
+        - !Ref ELB
+      MaxSize: '1'
+      MinSize: '1'
+      Tags:
+        - Key: Name
+          Value: ASwithDependsOn
+          PropagateAtLaunch: true
+      VPCZoneIdentifier:
+        - subnet-81d796e6
+        - subnet-3aed7673
+    CreationPolicy:
+      AutoScalingCreationPolicy:
+        MinSuccessfulInstancesPercent: 30
+      ResourceSignal:
+        Count: '1'
+        Timeout: PT10M
+
+  ASLG2:
+    Type: "AWS::AutoScaling::LaunchConfiguration"
+    DependsOn: ASAG1
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          Test : 
+            - "Install"
+            - "Configure"
+        Install:
+          packages:
+            yum:
+              curl: []
+              lvm2: []
+              ntp: []
+              rsync: []
+              screen: []
+              telnet: []
+              wget: []
+              httpd: []
+        Configure:
+          files:
+            /var/www/html/index.html:
+              content: !Join
+                - ''
+                - - '<h1>My Name is Santhosh Deepu Patrayuni.</h1>'
+              mode: '0755'
+              owner: root
+              group: root
+          services: 
+            sysvinit: 
+              httpd: 
+                enabled: "true"
+                ensureRunning: "true"
+                files: 
+                  - "/etc/httpd/conf/httpd.conf"
+                sources: 
+                  - "/var/www/html"
+    Properties:
+      ImageId: ami-6f46da0f
+      InstanceType: t2.micro
+      KeyName: intuit_learning
+      SecurityGroups:
+        - sg-c6f88bbd
+        - sg-d0e794ab
+        - !Ref ELBtoEC2Ingress
+      UserData: 
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            yum update -y aws-cfn-bootstrap
+            cfn-init -v --stack=${AWS::StackName} --resource=ASLG2 --configsets=Test --region=${AWS::Region}
+            cfn-signal --stack=${AWS::StackName} --resource=ASAG2 --region=${AWS::Region}
+
+  ASAG2:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      LaunchConfigurationName: !Ref ASLG2
+      LoadBalancerNames: 
+        - !Ref ELB
+      MaxSize: '1'
+      MinSize: '1'
+      Tags:
+        - Key: Name
+          Value: ASwithELBVerify2
+          PropagateAtLaunch: true
+      VPCZoneIdentifier:
+        - subnet-81d796e6
+        - subnet-3aed7673
+    CreationPolicy:
+      AutoScalingCreationPolicy:
+        MinSuccessfulInstancesPercent: 30
+      ResourceSignal:
+        Count: '1'
+        Timeout: PT10M
+
+  ELB:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      CrossZone: 'true'
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort: '80'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/index.html
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+      Subnets:
+        - subnet-81d796e6
+        - subnet-3aed7673
+      SecurityGroups:
+        - sg-de007fa5
+        - !Ref ELBSG
+
+  ELBSG:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties: 
+      GroupDescription: ELB Security Group
+      SecurityGroupIngress:
+        - FromPort: 80
+          IpProtocol: tcp
+          SourceSecurityGroupId: sg-de007fa5
+          ToPort: 80
+      VpcId: vpc-a2f4c1c5
+
+  ELBtoEC2Ingress:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties: 
+      GroupDescription: ELB Security Group
+      SecurityGroupIngress:
+        - FromPort: 80
+          IpProtocol: tcp
+          SourceSecurityGroupId: !Ref ELBSG
+          ToPort: 80
+      VpcId: vpc-a2f4c1c5
+
+
+
+

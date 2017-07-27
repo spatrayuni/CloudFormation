@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating SG for FDPProvider (Bills ELB SG).
+
+## Parameters section for cf template.
+Parameters:
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+
+  SourceIntuitSG:
+    Description: SourceIntuitSG
+    Type: String
+
+Resources:
+### Instance Security Group
+
+  SecurityGroupsInstanceELBAPIGatewayProvider:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: SG to whitelist apigateway
+      SecurityGroupIngress:
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 52.89.22.0/29
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 35.167.191.224/29
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 34.203.255.184/29
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 34.199.255.168/29
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 13.59.251.0/29
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 13.59.254.0/29
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 13.59.254.0/29
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 35.161.198.250/32
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 35.161.34.158/32
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 35.161.38.46/32
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 54.87.189.226/32
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 52.86.54.38/32
+        ToPort: '443'
+
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        CidrIp: 54.87.221.138/32
+        ToPort: '443'
+
+      VpcId:  
+        Ref: VpcId
+
+  SecurityGroupsInstanceELBIntuitProvider:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Security Group for FDPBills - External to Bills ELB.
+      SecurityGroupIngress:
+      - FromPort: '443'
+        IpProtocol: 'tcp'
+        SourceSecurityGroupId: !Ref SourceIntuitSG
+        ToPort: '443'
+
+      VpcId:  
+        Ref: VpcId
+
+Outputs:
+
+  SecurityGroupsInstanceELBAPIGateway:
+    Description: SG to whitelist apigateway
+    Value:
+      Ref: SecurityGroupsInstanceELBAPIGatewayProvider
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-SecurityGroupsInstanceELBAPIGateway
+
+  SecurityGroupsInstanceELBIntuit:
+    Description: SG to whitelist Intuit IP
+    Value:
+      Ref: SecurityGroupsInstanceELBIntuitProvider
+    Export:
+      Name: 
+        !Sub ${AWS::StackName}-SecurityGroupsInstanceELBIntuitProvider

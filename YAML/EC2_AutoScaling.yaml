@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Create Number of EC2 instances with Bastion SG and Instance CIDR SG
+
+Parameters:
+
+  Keyname:
+    Description: Provide the Key Name
+    Type: AWS::EC2::KeyPair::KeyName
+
+  AMI:
+    Description: Name of the Image ID
+    Type: AWS::EC2::Image::Id
+
+  SGs:
+    Description: Provide the SecurityGroup IDs
+    Type: List<AWS::EC2::SecurityGroup::Id>
+
+  Sunbets:
+    Description: Provide the Subnet Name
+    Type: List<AWS::EC2::Subnet::Id>
+
+  InstanceNo:
+    Description: Provide the number of instances to be launched
+    Type: Number
+
+  InstanceType:
+    Description: Provide the InstanceType
+    Type: String
+  
+
+Resources:
+
+  ASLG:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: false
+      BlockDeviceMappings: 
+      - DeviceName: "/dev/sda1"
+        Ebs: 
+          VolumeSize: 10
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref Keyname
+      SecurityGroups: !Ref SGs
+
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      DesiredCapacity: !Ref InstanceNo
+      LaunchConfigurationName: !Ref ASLG
+      MaxSize: !Ref InstanceNo
+      MinSize: !Ref InstanceNo
+      Tags:
+        - Key: "Name"
+          Value: "Chef"
+          PropagateAtLaunch: true
+      VPCZoneIdentifier: !Ref Sunbets
+
+
