@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CFAO base instance profile and policies.
+Outputs:
+  BaseInstanceProfile:
+    Description: Base Instance Profile for EC2 instances
+    Value:
+      Ref: BaseInstanceProfile
+  EumsUser:
+    Description: IAM username for EumsUser.
+    Value:
+      Ref: EumsUser
+  ExtraIamPolicies:
+    Description: Extra Managed Instance Policies - used by other CF templates.
+    Value:
+      Fn::Join:
+      - ','
+      - - Ref: PolicyIss
+        - Ref: PolicyS3AccessSharedNexusRepo
+        - Ref: PolicyS3AccessOimClient
+        - Ref: PolicyEumsS3
+Parameters:
+  AccountID:
+    Description: Account ID.
+    Type: String
+  SecretsCmkId:
+    Description: ARN of the KMS CMK used to encrypt secrets.
+    Type: String
+  SecretsS3:
+    Description: S3 bucket name of the secrets-cli.
+    Type: String
+  SharedNexusRepoS3:
+    Description: S3 bucket name of the Shared Nexus repo mirror (PD artifacts).
+    Type: String
+Resources:
+  #Creates a Base Instance Proflie with permissions to all
+  BaseInstanceProfile:
+    Properties:
+      Path: /
+      Roles:
+      - Ref: BaseInstanceRole
+    Type: AWS::IAM::InstanceProfile
+  #Creates a Base Instance Role which has STS permissions with policy on Iss, S3 bucket with Nexus Repo, S3 bucket with Oim Client and S3 bucket with eums
+  BaseInstanceRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - Ref: PolicyIss
+      - Ref: PolicyS3AccessSharedNexusRepo
+      - Ref: PolicyS3AccessOimClient
+      - Ref: PolicyEumsS3
+      Path: /
+    Type: AWS::IAM::Role
+ #Create a S3 Bucket with the name - AccountID-eums   
+  EumsS3:
+    Properties:
+      BucketName:
+        Fn::Join:
+        - ''
+        - - Ref: AccountID
+          - -eums
+    Type: AWS::S3::Bucket
+  #Creates a IAM User with iam-base-EumsUser-19KECD7SJ2GUZ 
+  EumsUser:
+    Properties:
+      ManagedPolicyArns:
+      - Ref: PolicyEumsIAMRO
+      - Ref: PolicyEumsS3
+      Path: /
+    Type: AWS::IAM::User
+  # Create a Policy iam-base-PolicyEumsIAMRO-E2AIRY5FNZJN which allows Get and List of all IAM Policies
+  PolicyEumsIAMRO:
+    Properties:
+      Description: Policy allow RO access to IAM.
+      PolicyDocument:
+        Statement:
+        - Action:
+          - iam:Get*
+          - iam:List*
+          Effect: Allow
+          Resource:
+          - '*'
+        Version: '2012-10-17'
+    Type: AWS::IAM::ManagedPolicy
+  #Creates a Policy which allows Eums and its contents have Get, List, Put and Delete actions
+  PolicyEumsS3:
+    Properties:
+      Description: Policy allow access to the eums S3 bucket.
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:DeleteObject
+          - s3:GetObject
+          - s3:ListBucket
+          - s3:PutObject
+          Effect: Allow
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: EumsS3
+              - /*
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: EumsS3
+        Version: '2012-10-17'
+    Type: AWS::IAM::ManagedPolicy
+  #Creates a Policy which allows Get, List on SecretsS3 bucket and kms:Decrypt on SecretsCmkId
+  PolicyIss:
+    Properties:
+      Description: Policy allow secrets-cli decryption.
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          - s3:GetObjectVersion
+          - s3:ListBucket
+          - s3:ListBucketVersions
+          Effect: Allow
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: SecretsS3
+              - /*
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: SecretsS3
+        - Action:
+          - kms:Decrypt
+          Effect: Allow
+          Resource:
+          - Ref: SecretsCmkId
+        Version: '2012-10-17'
+    Type: AWS::IAM::ManagedPolicy
+  #Policy allow Get access to the shared nexus repo s3 bucket.
+  PolicyS3AccessSharedNexusRepo:
+    Properties:
+      Description: Policy allow access to the shared nexus repo s3 bucket.
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          Effect: Allow
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: SharedNexusRepoS3
+              - /*
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: SharedNexusRepoS3
+        Version: '2012-10-17'
+    Type: AWS::IAM::ManagedPolicy
+  #Policy allow Put access to the shared OIM Client S3 buckets, which are managed by CET
+  PolicyS3AccessOimClient:
+    Properties:
+      Description: Policy allow access to the shared OIM Client S3 buckets, which are managed by CET, https://github.intuit.com/oim/oim-setup/blob/master/client/sample_ec2_client_role.json
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:PutObject
+          - s3:PutObjectAcl
+          Effect: Allow
+          Resource:
+          - 'arn:aws:s3:::intu-oim*'
+        Version: '2012-10-17'
+    Type: AWS::IAM::ManagedPolicy
+
+  #Create a IAM Role that is used by External IAM Users
+  OimMetricsReadonlyRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::996354045376:root
+      Path: /
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - autoscaling:Describe*
+            - cloudformation:Describe*
+            - cloudformation:Get*
+            - cloudformation:List*
+            - cloudwatch:Describe*
+            - cloudwatch:Get*
+            - cloudwatch:List*
+            - ec2:Describe*
+            - elasticloadbalancing:Describe*
+            - rds:Describe*
+            - rds:ListTagsForResource
+            - s3:GetBucketTagging
+            - s3:ListAllMyBuckets
+            - sns:GetTopicAttributes
+            - sns:GetSubscriptionAttributes
+            - sns:ListTopics
+            - sns:ListSubscriptions
+            - sqs:GetQueueAttributes
+            - sqs:ListQueues
+            - tag:Get*
+            Effect: Allow
+            Resource: '*'
+            Sid: EnableCloudWwatchMetricsReadOnly
+        PolicyName: iam
+      RoleName: oim-metrics-readonly-role
+    Type: AWS::IAM::Role

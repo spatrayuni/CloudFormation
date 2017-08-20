@@ -1,0 +1,85 @@
+Resources:
+  BaseInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+      - Ref: BaseInstanceRole
+
+  BaseInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: root
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: "*"
+          Resource: "*"
+      Roles:
+      - !Ref BaseInstanceRole
+
+  ASLG:
+    Type: "AWS::AutoScaling::LaunchConfiguration"
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          Test : 
+            - "Install"
+        Install:
+          packages:
+            yum:
+              curl: []
+              lvm2: []
+              ntp: []
+              rsync: []
+              screen: []
+              telnet: []
+              wget: []
+    Properties:
+      ImageId: ami-6f46da0f
+      InstanceType: t2.micro
+      KeyName: intuit_learning
+      SecurityGroups:
+        - sg-e189059b
+        - sg-8c8804f6
+      IamInstanceProfile:
+        !Ref BaseInstanceProfile
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            cfn-init -v --stack=${AWS::StackName} --resource=ASLG --configsets=Test --region=${AWS::Region}
+            for i in {1..5}; do echo waiting sleep 60s; done
+            cfn-signal --stack=${AWS::StackName} --resource=ASAG --region=${AWS::Region}
+
+
+  ASAG:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      LaunchConfigurationName: !Ref ASLG
+      MaxSize: '1'
+      MinSize: '1'
+      Tags:
+        - Key: Name
+          Value: ASwithSleep
+          PropagateAtLaunch: true
+      VPCZoneIdentifier:
+        - subnet-883dd8ee
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT7M

@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Parameters:
+  PolicyIss:
+    Description: Provide the ARN for PolicyIss Policy
+    Type: String
+    Default: "arn:aws:iam::247827617643:policy/iam-base-PolicyIss-1S3M48034DVXX"
+  PolicyS3AccessSharedNexusRepo: 
+    Description: Provide the ARN for PolicyS3AccessSharedNexusRepo Policy
+    Type: String
+    Default: "arn:aws:iam::247827617643:policy/iam-base-PolicyS3AccessSharedNexusRepo-1DE59ZT7MRVQW"
+  PolicyS3AccessOimClient: 
+    Description: Provide the ARN for PolicyS3AccessOimClient Policy
+    Type: String
+    Default: "arn:aws:iam::247827617643:policy/iam-base-PolicyS3AccessOimClient-1JTOCG2JPI0C0"
+  PolicyEumsS3:
+    Description: Provide the ARN for PolicyEumsS3 Policy
+    Type: String
+    Default: "arn:aws:iam::247827617643:policy/iam-base-PolicyEumsS3-96EFZCLUOBTQ"
+  CICDS3Bucket:
+    Description: Provide the ARN for S3 Bucket
+    Type: String
+    Default : "bill-cicd-247827617643-us-west-2-preprod"
+
+Resources:
+  BaseInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+      - Ref: BaseInstanceRole
+      
+  BaseInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - Ref: PolicyIss
+      - Ref: PolicyS3AccessSharedNexusRepo
+      - Ref: PolicyS3AccessOimClient
+      - Ref: PolicyEumsS3
+      - Ref: PolicyCICDS3Role
+      Path: /
+
+  PolicyCICDS3Role:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy allow access to the eums S3 bucket.
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:DeleteObject
+          - s3:GetObject
+          - s3:ListBucket
+          - s3:PutObject
+          Effect: Allow
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: CICDS3Bucket
+              - /*
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: CICDS3Bucket
+        Version: '2012-10-17'

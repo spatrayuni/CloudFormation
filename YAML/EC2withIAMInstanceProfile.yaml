@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion : 2010-09-09
+
+Parameters:
+  IamInstanceProfile:
+    Description: Provide the Instance Instance Profile Name
+    Type: String
+    Default: "IAM-Base-InstanceProfile-BaseInstanceProfile-1FR85UHP1P9EN"
+
+Resources:
+  EC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: ami-6f46da0f
+      InstanceType: t2.micro
+      KeyName: cfao-fdsdev-201704
+      SecurityGroupIds: 
+        - sg-fcbb0a86
+      SubnetId: subnet-4d0f6004
+      Tags: 
+        - Key: Name
+          Value: TestEc2withInstanceProfile

@@ -89,12 +89,7 @@
     "VPCZoneIdentifier": {
       "Description": "List of VPCZoneIdentifier",
       "Type": "List<String>"
-    },
-    "ELBName": {
-      "Description": "ELB Name",
-      "Type": "String"
     }
-
   },
   "Resources": {
     "fdsautoscalingLaunchConfiguration": {
@@ -183,6 +178,18 @@
                 ],
                 "wget": [
                 ]
+              }
+            }
+          },
+          "configSets": {
+            "Sleep": [
+              "Sleeptime"
+            ]
+          },
+          "Sleeptime": {
+            "commands": {
+              "sleepcommand": {
+                "command": "for i in {1..20}; do sleep 60s; done"
               }
             }
           }
@@ -299,12 +306,22 @@
                 "rm -rf /etc/profile.d/ec2-egress-proxy.sh\n",
                 "/sbin/service tomcat start ",
                 "# If all went well, signal success\n",
-                "until [ \"$state\" == \"\"InService\"\" ]; do state=$(aws --region ${AWS::Region} elb describe-instance-health --load-balancer-name ${ELBName} --instances $(curl -s http://169.254.169.254/latest/meta-data/instance-id) --query InstanceStates[0].State); sleep 60; done\n",
                 "cfn-signal -e $? -r 'FDS server configuration' '",
                 {
                   "Ref": "WaitHandle"
                 },
-                "'\n"
+                "'\n",
+                "cfn-init ",
+                "    -v -s  ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " -c Sleep ",
+                " -r fdsautoscalingLaunchConfiguration ",
+                "         --region     ",
+                {
+                  "Ref": "AWS::Region"
+                },
               ]
             ]
           }

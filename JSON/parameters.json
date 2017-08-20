@@ -1,0 +1,23 @@
+{
+  "ImageId":"ami-157df375",
+  "ArtifactBucket":"doc-cicd-247827617643-us-west-2-preprod",
+  "ArtifactKey":"trigger_file_doc_aws.tar.gz",
+  "ArtifactVersion":"1.0.0.45",
+  "AppEC2SecurityGroup":"sg-15a3cf6e,sg-904fb6ea",
+  "ChefEnvironment":"doc_dev_aws",
+  "ChefRole":"recipe[fds-service-accounts],role[fds_aws],role[doc_app_ws_aws]",
+  "ChefServerURL":"https://chefprod.fdsperf.a.intuit.com/organizations/fds-qa",
+  "EbsVolumeSize":"30",
+  "EumcScriptPath":"s3://cfao-shared-s3-nexusmirror-1knfmiuqbir7f/content/repositories/CTO.OPS-releases/files/install_eumc.sh",
+  "Hosttag":"fdpdocv2-ws-dev",
+  "IAM":"iam-base-BaseInstanceProfile-BS5FYUMIYH5I",
+  "ImageId":"ami-157df375",
+  "InstanceType":"t2.large",
+  "KeyName":"cfao-fdsdev-201704",
+  "MinSize":"3",
+  "MaxSize":"3",
+  "ResourceName":"fdpdocapp-dev",
+  "SecretsRPM":"s3://cfao-shared-s3-nexusmirror-1knfmiuqbir7f/secrets-cli-2.3.3.0.rpm",
+  "SecretsS3":"iss-247827617643-us-west-2-preprod",
+  "VPCZoneIdentifier":"subnet-4d0f6004,subnet-5be01f00,subnet-ab2470cc"
+}
