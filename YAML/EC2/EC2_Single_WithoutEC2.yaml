@@ -1,0 +1,51 @@
+# This template is for creating a Single/Multiple EC2 instance
+# Features:
+# No Autoscaling
+# No Block device
+# No Public IP Address
+# No Instance Profile
+# No Detailed monitoring
+# No Specific Private IP address
+# No Userdata
+# No EBS Volumes
+
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: "Single/Multiple EC2 instance without Autoscaling"
+
+Parameters:
+  AMIId: 
+    Description: Provide the AMI ImageId
+    Type: AWS::EC2::Image::Id
+  InstanceType:
+    Description: Provide the Instance Type
+    Type: AWS::EC2::Instance::Id
+  KeyPair:
+    Description: Provide the Key KeyPair
+    Type: AWS::EC2::KeyPair::KeyName
+  SecurityGroupIds:
+    Description: Provide the list of all SecurityGroups SecurityGroupIds
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  SubnetId:
+    Description: Provide the Subnet Id
+    Type: AWS::EC2::Subnet::Id
+  TagValue:
+    Description: Provide the Tag Value
+    Type: String
+
+Resources:
+  Type: AWS::EC2::Instance
+  Properties:
+    ImageId: 
+      !Ref AMIId
+    InstanceType: 
+      !Ref InstanceType
+    KeyName: 
+      !Ref KeyPair
+    SecurityGroupIds: 
+      !Ref SecurityGroupIds
+    SubnetId: 
+      !Ref SubnetId
+    Tags: 
+      - Key: Name
+        Value: !Ref TagValue
